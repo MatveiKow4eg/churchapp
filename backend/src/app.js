@@ -13,6 +13,7 @@ const { shopRouter } = require('./routes/shopRoutes');
 const { meRouter } = require('./routes/meRoutes');
 const { statsRouter } = require('./routes/statsRoutes');
 const { leaderboardRouter } = require('./routes/leaderboardRoutes');
+const { adminRouter } = require('./routes/adminRoutes');
 
 const app = express();
 
@@ -73,6 +74,9 @@ app.use('/stats', statsRouter);
 
 // Mount leaderboard routes
 app.use('/leaderboard', leaderboardRouter);
+
+// Mount admin routes
+app.use('/admin', adminRouter);
 
 // 404 fallback
 app.use((req, res) => {

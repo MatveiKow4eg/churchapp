@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_error.dart';
-import '../../auth/auth_state.dart';
 import '../../auth/session_providers.dart';
 import '../../tasks/models/task_model.dart';
 import '../../tasks/tasks_providers.dart';
@@ -39,7 +38,7 @@ class AdminTasksListController extends AutoDisposeAsyncNotifier<List<TaskModel>>
   Future<void> handleAppError(AppError e) async {
     if (e.code == 'UNAUTHORIZED') {
       await ref.read(authTokenProvider.notifier).clearToken();
-      ref.invalidate(authStateProvider);
+      ref.invalidate(currentUserProvider);
       return;
     }
   }

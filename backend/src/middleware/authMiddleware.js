@@ -38,6 +38,19 @@ function requireAuth(req, res, next) {
       throw new HttpError(401, 'INVALID_TOKEN', 'Token is invalid or expired');
     }
 
+    // DEBUG (temporary)
+    // eslint-disable-next-line no-console
+    console.log(
+      '[auth] path=',
+      req.path,
+      'auth=',
+      (req.headers['authorization'] || '').slice(0, 30),
+      'payloadRole=',
+      payload.role,
+      'payloadSub=',
+      payload.sub ?? payload.userId
+    );
+
     // payload: { sub, userId, role, churchId }
     req.user = {
       id: payload.sub ?? payload.userId,

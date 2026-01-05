@@ -5,63 +5,59 @@ import '../config/app_config.dart';
 import '../storage/secure_store.dart';
 
 import '../../features/auth/auth_repository.dart';
+import '../../features/auth/session_providers.dart';
 
 final secureStoreProvider = Provider<SecureStore>((ref) {
   return SecureStore();
 });
 
-/// Synchronous baseUrl state that is loaded once from storage on first use.
-/// Empty string means "not configured".
-final baseUrlProvider = NotifierProvider<BaseUrlNotifier, String>(BaseUrlNotifier.new);
+/// Base URL is loaded from storage asynchronously.
+/// - loading: we don't know yet if server is configured
+/// - data(''): not configured -> must go to /server
+/// - data(url): configured
+final baseUrlProvider = AsyncNotifierProvider<BaseUrlNotifier, String>(
+  BaseUrlNotifier.new,
+);
 
-class BaseUrlNotifier extends Notifier<String> {
+class BaseUrlNotifier extends AsyncNotifier<String> {
   @override
-  String build() {
-    // Default while loading. We load from storage asynchronously and update state.
-    state = '';
-
-    // Fire-and-forget init load.
-    Future.microtask(_loadFromStorage);
-
-    return state;
-  }
-
-  Future<void> _loadFromStorage() async {
+  Future<String> build() async {
     final store = ref.read(secureStoreProvider);
-    final saved = (await store.getBaseUrl()) ?? '';
-
-    // Avoid unnecessary rebuilds.
-    if (saved != state) {
-      state = saved;
-    }
+    return (await store.getBaseUrl()) ?? '';
   }
 
   Future<void> setBaseUrl(String baseUrl) async {
     final store = ref.read(secureStoreProvider);
     await store.setBaseUrl(baseUrl);
-    state = baseUrl;
+    state = AsyncData(baseUrl);
   }
 
   Future<void> clearBaseUrl() async {
     final store = ref.read(secureStoreProvider);
     await store.clearBaseUrl();
-    state = '';
+    state = const AsyncData('');
   }
 }
 
 final appConfigProvider = Provider<AppConfig>((ref) {
-  final baseUrl = ref.watch(baseUrlProvider);
+  final baseUrlAsync = ref.watch(baseUrlProvider);
+  final baseUrl = baseUrlAsync.valueOrNull ?? '';
   return AppConfig(baseUrl: baseUrl);
 });
 
 /// ApiClient is created based on the latest baseUrl and current token getter.
 final apiClientProvider = Provider<ApiClient>((ref) {
-  final store = ref.watch(secureStoreProvider);
+  // IMPORTANT: ApiClient must use the same token source as router/auth state.
+  // We intentionally do NOT read token directly from SecureStore here, because
+  // SecureStore is async and can lag behind after login.
   final config = ref.watch(appConfigProvider);
+
+  // Watch token so ApiClient always uses the latest value.
+  final tokenAsync = ref.watch(authTokenProvider);
 
   return ApiClient(
     baseUrl: config.baseUrl,
-    getToken: store.getToken,
+    getToken: () async => tokenAsync.valueOrNull,
   );
 });
 

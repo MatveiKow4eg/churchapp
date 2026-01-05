@@ -5,7 +5,6 @@ import '../../core/providers/providers.dart';
 
 import 'auth_repository.dart';
 import 'models/auth_result.dart';
-import 'auth_state.dart';
 import 'session_providers.dart';
 
 class LoginRequest {
@@ -37,13 +36,11 @@ class LoginController extends AsyncNotifier<void> {
         password: req.password,
       );
 
-      // Update auth state (router redirect relies on it).
+      // Update token first.
       await ref.read(authTokenProvider.notifier).setToken(result.token);
 
-      // Refresh global AuthState (token + /auth/me -> churchId)
-      ref.invalidate(authStateProvider);
-
       // /auth/login returns token only; load profile via /auth/me.
+      // IMPORTANT: wait for /auth/me before letting router make role-based decisions.
       try {
         await ref.read(currentUserProvider.notifier).loadMe();
       } on AppError catch (e) {
@@ -57,6 +54,8 @@ class LoginController extends AsyncNotifier<void> {
         }
         rethrow;
       }
+
+      // NOTE: authStateProvider is legacy and must not be used.
 
       state = const AsyncData(null);
       return result;

@@ -1,4 +1,4 @@
-const shopItemService = require('../services/shopItemService');
+const shopCatalogService = require('../services/shopCatalogService');
 const pointsService = require('../services/pointsService');
 const userService = require('../services/userService');
 const { prisma } = require('../db/prisma');
@@ -12,12 +12,11 @@ async function listItems(req, res, next) {
       throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
     }
 
-    const { activeOnly, type, limit, offset } = req.query;
+    const { activeOnly, limit, offset } = req.query;
 
-    const items = await shopItemService.listItems({
+    const items = await shopCatalogService.listItems({
       churchId,
       activeOnly,
-      type,
       limit,
       offset
     });
@@ -27,122 +26,6 @@ async function listItems(req, res, next) {
       limit,
       offset,
       total: items.length
-    });
-  } catch (err) {
-    return next(err);
-  }
-}
-
-async function createItem(req, res, next) {
-  try {
-    const churchId = req.user?.churchId;
-
-    if (!churchId) {
-      throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
-    }
-
-    const { name, description, type, pricePoints } = req.body;
-
-    const item = await shopItemService.createItem({
-      churchId,
-      name,
-      description,
-      type,
-      pricePoints
-    });
-
-    return res.status(201).json({
-      item: {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        type: item.type,
-        pricePoints: item.pricePoints,
-        isActive: item.isActive,
-        createdAt: item.createdAt
-      }
-    });
-  } catch (err) {
-    // Unique (churchId, name) -> Prisma P2002 is mapped by errorHandler to 409 CONFLICT
-    return next(err);
-  }
-}
-
-async function updateItem(req, res, next) {
-  try {
-    const itemId = req.params.id;
-
-    const adminRole = req.user?.role;
-    const adminChurchId = req.user?.churchId;
-
-    if (!adminChurchId) {
-      throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
-    }
-
-    const existing = await shopItemService.getItemById(itemId);
-    if (!existing) {
-      throw new HttpError(404, 'NOT_FOUND', 'Not found');
-    }
-
-    if (adminRole !== 'SUPERADMIN' && existing.churchId !== adminChurchId) {
-      throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
-    }
-
-    const patch = req.body;
-
-    const item = await shopItemService.updateItem(itemId, patch);
-
-    return res.status(200).json({
-      item: {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        type: item.type,
-        pricePoints: item.pricePoints,
-        isActive: item.isActive,
-        createdAt: item.createdAt
-      }
-    });
-  } catch (err) {
-    if (err && err.message === 'EMPTY_PATCH') {
-      return next(new HttpError(400, 'EMPTY_PATCH', 'EMPTY_PATCH'));
-    }
-    return next(err);
-  }
-}
-
-async function deactivateItem(req, res, next) {
-  try {
-    const itemId = req.params.id;
-
-    const adminRole = req.user?.role;
-    const adminChurchId = req.user?.churchId;
-
-    if (!adminChurchId) {
-      throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
-    }
-
-    const existing = await shopItemService.getItemById(itemId);
-    if (!existing) {
-      throw new HttpError(404, 'NOT_FOUND', 'Not found');
-    }
-
-    if (adminRole !== 'SUPERADMIN' && existing.churchId !== adminChurchId) {
-      throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
-    }
-
-    const item = await shopItemService.deactivateItem(itemId);
-
-    return res.status(200).json({
-      item: {
-        id: item.id,
-        name: item.name,
-        description: item.description,
-        type: item.type,
-        pricePoints: item.pricePoints,
-        isActive: item.isActive,
-        createdAt: item.createdAt
-      }
     });
   } catch (err) {
     return next(err);
@@ -167,15 +50,18 @@ async function purchase(req, res, next) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
-    const { itemId } = req.body;
+    const { itemKey } = req.body;
 
     const result = await prisma.$transaction(async (tx) => {
-      const item = await tx.shopItem.findUnique({
-        where: { id: itemId },
+      const item = await tx.shopCatalogItem.findUnique({
+        where: {
+          churchId_itemKey: {
+            churchId,
+            itemKey
+          }
+        },
         select: {
-          id: true,
-          name: true,
-          type: true,
+          itemKey: true,
           pricePoints: true,
           churchId: true,
           isActive: true
@@ -196,9 +82,9 @@ async function purchase(req, res, next) {
 
       const existingInventory = await tx.inventory.findUnique({
         where: {
-          userId_itemId: {
+          userId_itemKey: {
             userId,
-            itemId
+            itemKey
           }
         },
         select: { id: true }
@@ -225,21 +111,21 @@ async function purchase(req, res, next) {
           userId,
           type: 'PURCHASE',
           amount: -item.pricePoints,
-          meta: { itemId }
+          meta: { itemKey }
         }
       });
 
       const inventory = await tx.inventory.create({
         data: {
           userId,
-          itemId,
+          itemKey,
           quantity: 1
         },
         select: {
           id: true,
-          userId: true,
-          itemId: true,
-          acquiredAt: true
+          itemKey: true,
+          acquiredAt: true,
+          quantity: true
         }
       });
 
@@ -249,12 +135,8 @@ async function purchase(req, res, next) {
     const newBalance = await pointsService.getBalance(userId, churchId);
 
     return res.status(200).json({
-      item: {
-        id: result.item.id,
-        name: result.item.name,
-        pricePoints: result.item.pricePoints,
-        type: result.item.type
-      },
+      itemKey: result.item.itemKey,
+      pricePoints: result.item.pricePoints,
       balance: newBalance,
       inventory: result.inventory
     });
@@ -265,8 +147,5 @@ async function purchase(req, res, next) {
 
 module.exports = {
   listItems,
-  createItem,
-  updateItem,
-  deactivateItem,
   purchase
 };

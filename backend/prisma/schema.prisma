@@ -39,12 +39,8 @@ enum LedgerType {
   ADMIN_ADJUSTMENT
 }
 
-enum ShopItemType {
-  COSMETIC
-  UPGRADE
-  BADGE
-  OTHER
-}
+// Shop items are now code-driven on the client (catalog.json).
+// Server stores only pricing/active flags per church and purchase facts.
 
 // Минимальная тестовая модель для проверки миграций.
 model HealthPing {
@@ -55,15 +51,15 @@ model HealthPing {
 // Church — минимальная модель только для связи с User.
 // Не расширяем бизнес-логику на этом шаге.
 model Church {
-  id            String         @id @default(cuid())
-  name          String         @unique
+  id            String            @id @default(cuid())
+  name          String            @unique
   city          String?
   users         User[]
   tasks         Task[]
   submissions   Submission[]
   ledgerEntries PointsLedger[]
-  shopItems     ShopItem[]
-  createdAt     DateTime       @default(now())
+  shopCatalog   ShopCatalogItem[]
+  createdAt     DateTime          @default(now())
 }
 
 model User {
@@ -176,29 +172,24 @@ model PointsLedger {
   @@index([createdAt])
 }
 
-model ShopItem {
-  id String @id @default(cuid())
+model ShopCatalogItem {
+  /// Unique key referenced by the mobile catalog.json
+  /// Example: "hat_baseball_red"
+  itemKey String
 
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  name        String
-  description String
-  type        ShopItemType @default(OTHER)
-  pricePoints Int
-
   isActive Boolean @default(true)
-
-  inventory Inventory[]
+  pricePoints Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([churchId])
   @@index([isActive])
-  @@index([type])
 
-  @@unique([churchId, name])
+  @@unique([churchId, itemKey])
 }
 
 model Inventory {
@@ -207,14 +198,13 @@ model Inventory {
   userId String
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  itemId String
-  item   ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemKey String
 
   quantity Int @default(1)
 
   acquiredAt DateTime @default(now())
 
-  @@unique([userId, itemId])
+  @@unique([userId, itemKey])
   @@index([userId])
-  @@index([itemId])
+  @@index([itemKey])
 }

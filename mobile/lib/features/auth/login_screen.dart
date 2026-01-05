@@ -97,7 +97,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
       FocusScope.of(context).unfocus();
-      context.go(AppRoutes.church);
+
+      // Do not force a route here.
+      // After token+me are loaded, GoRouter redirect will deterministically
+      // send the user to /church, /tasks or /superadmin.
+      context.go(AppRoutes.splash);
     } on AppError catch (e) {
       if (!mounted) return;
       final message = (e.message.isNotEmpty)

@@ -74,6 +74,13 @@ class _JwtAuthInterceptor extends Interceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+
+    // DEBUG (temporary): trace auth header and token prefix.
+    // ignore: avoid_print
+    print(
+      '[dio] ${options.method} ${options.path} authHeader=${options.headers['Authorization'] != null} token=${token == null ? 'null' : token.substring(0, token.length < 20 ? token.length : 20)} fullAuthHeader=${options.headers['Authorization']}',
+    );
+
     handler.next(options);
   }
 }

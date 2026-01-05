@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers/providers.dart';
-import '../auth/auth_state.dart';
 import '../auth/session_providers.dart';
 import 'models/task_model.dart';
 import 'tasks_repository.dart';
@@ -50,7 +49,7 @@ class TasksListNotifier extends AutoDisposeAsyncNotifier<List<TaskModel>> {
     if (s.contains('AppError(code: UNAUTHORIZED') ||
         s.contains('UNAUTHORIZED')) {
       await ref.read(authTokenProvider.notifier).clearToken();
-      ref.invalidate(authStateProvider);
+      ref.invalidate(currentUserProvider);
     }
   }
 }

@@ -13,19 +13,39 @@ class ServerSetupScreen extends ConsumerStatefulWidget {
 }
 
 class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
+  ProviderSubscription<AsyncValue<String>>? _baseUrlSub;
 
   @override
   void initState() {
     super.initState();
 
-    // Prefill from synchronous provider once it's loaded from storage.
-    // We also update it in build() when state changes to keep it consistent.
-    _controller.text = ref.read(baseUrlProvider);
+    _controller = TextEditingController(text: '');
+
+    // Correct pattern for ConsumerState:
+    // - use listenManual in initState
+    // - close subscription in dispose
+    _baseUrlSub = ref.listenManual<AsyncValue<String>>(
+      baseUrlProvider,
+      (prev, next) {
+        next.whenOrNull(
+          data: (value) {
+            if (_controller.text == value) return;
+            _controller.value = _controller.value.copyWith(
+              text: value,
+              selection: TextSelection.collapsed(offset: value.length),
+              composing: TextRange.empty,
+            );
+          },
+        );
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
   void dispose() {
+    _baseUrlSub?.close();
     _controller.dispose();
     super.dispose();
   }
@@ -40,16 +60,8 @@ class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentBaseUrl = ref.watch(baseUrlProvider);
-
-    // Keep text field in sync when baseUrl is loaded/changed externally.
-    if (_controller.text != currentBaseUrl) {
-      _controller.value = _controller.value.copyWith(
-        text: currentBaseUrl,
-        selection: TextSelection.collapsed(offset: currentBaseUrl.length),
-        composing: TextRange.empty,
-      );
-    }
+    final baseUrlAsync = ref.watch(baseUrlProvider);
+    final currentBaseUrl = baseUrlAsync.valueOrNull ?? '';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Server Setup')),
@@ -60,6 +72,19 @@ class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
           children: [
             const Text('Base URL'),
             const SizedBox(height: 8),
+            if (baseUrlAsync.isLoading)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(),
+              )
+            else if (baseUrlAsync.hasError)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Ошибка загрузки baseUrl: ${baseUrlAsync.error}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
@@ -70,29 +95,32 @@ class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
             ),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: () async {
-                final normalized = _normalizeBaseUrl(_controller.text);
-                if (normalized.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('baseUrl must not be empty')),
-                  );
-                  return;
-                }
+              onPressed: baseUrlAsync.isLoading
+                  ? null
+                  : () async {
+                      final normalized = _normalizeBaseUrl(_controller.text);
+                      if (normalized.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('baseUrl must not be empty'),
+                          ),
+                        );
+                        return;
+                      }
 
-                await ref.read(baseUrlProvider.notifier).setBaseUrl(normalized);
+                      await ref
+                          .read(baseUrlProvider.notifier)
+                          .setBaseUrl(normalized);
 
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('saved')),
-                );
-
-                context.go(AppRoutes.register);
-              },
+                      if (!context.mounted) return;
+                      context.go(AppRoutes.splash);
+                    },
               child: const Text('Save'),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Debug: after app restart this value should be loaded from storage.',
+            Text(
+              'Current: $currentBaseUrl',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),

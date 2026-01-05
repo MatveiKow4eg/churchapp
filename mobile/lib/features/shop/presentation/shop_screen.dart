@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/errors/app_error.dart';
+import '../../catalog/catalog_providers.dart';
 import '../../inventory/inventory_providers.dart';
 import '../models/shop_item_model.dart';
 import '../shop_providers.dart';
@@ -13,40 +14,89 @@ class ShopScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(shopItemsProvider);
-    final balance = ref.watch(balanceProvider);
-    final ownedItemIds = ref.watch(ownedItemIdsProvider);
-    final purchasingItemId = ref.watch(purchaseLoadingItemIdProvider);
+    // Step 14.5.1: temporary local catalog rendering from assets.
+    final async = ref.watch(catalogProvider);
 
     Future<void> onRefresh() async {
-      await ref.read(shopItemsProvider.notifier).refresh();
+      ref.invalidate(catalogProvider);
     }
 
     Widget body = async.when(
       data: (items) {
         if (items.isEmpty) {
-          return const _EmptyState();
+          return const _CatalogEmptyState();
         }
 
         return RefreshIndicator(
           onRefresh: onRefresh,
-          child: ListView.separated(
+          child: GridView.builder(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            itemCount: items.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.82,
+            ),
+            itemCount: items.length,
             itemBuilder: (context, i) {
-              if (i == 0) {
-                return _BalanceCard(balance: balance);
-              }
+              final item = items[i];
 
-              final item = items[i - 1];
-              final isOwned = ownedItemIds.contains(item.id);
-              final isLoading = purchasingItemId == item.id;
-
-              return _ShopItemCard(
-                item: item,
-                isOwned: isOwned,
-                isLoading: isLoading,
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            item.iconPath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, st) {
+                              return Container(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest,
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.image_not_supported_outlined),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        item.displayName(locale: 'ru'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${item.slot} • ${item.rarity}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Цена: ${item.price}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelLarge
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           ),
@@ -54,25 +104,10 @@ class ShopScreen extends ConsumerWidget {
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) {
-        if (err is AppError && err.code == 'NO_CHURCH') {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.church);
-          });
-        }
-
-        if (err is AppError && err.code == 'UNAUTHORIZED') {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.register);
-          });
-        }
-
-        final msg = (err is AppError && err.message.isNotEmpty)
-            ? err.message
-            : 'Не удалось загрузить магазин';
-
+        final msg = err.toString();
         return _ErrorState(
-          message: msg,
-          onRetry: () => ref.read(shopItemsProvider.notifier).refresh(),
+          message: msg.isNotEmpty ? msg : 'Не удалось загрузить каталог',
+          onRetry: () => ref.invalidate(catalogProvider),
         );
       },
     );
@@ -93,6 +128,49 @@ class ShopScreen extends ConsumerWidget {
         ],
       ),
       body: body,
+    );
+  }
+}
+
+class _CatalogEmptyState extends StatelessWidget {
+  const _CatalogEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        const SizedBox(height: 48),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.inventory_2_outlined,
+                    size: 48, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(height: 12),
+                Text(
+                  'Каталог пуст',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Проверь assets/catalog/catalog.json',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

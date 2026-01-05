@@ -5,7 +5,6 @@ import '../../core/providers/providers.dart';
 
 import 'auth_repository.dart';
 import 'models/auth_result.dart';
-import 'auth_state.dart';
 import 'session_providers.dart';
 
 class RegisterRequest {
@@ -52,8 +51,8 @@ class RegisterController extends AsyncNotifier<void> {
       // Update auth state (router redirect relies on it).
       await ref.read(authTokenProvider.notifier).setToken(result.token);
 
-      // Refresh global AuthState (token + /auth/me -> churchId)
-      ref.invalidate(authStateProvider);
+      // Refresh current user session (will re-run /auth/me if token exists)
+      ref.invalidate(currentUserProvider);
 
       // Register usually returns user, but we keep a single source of truth.
       if (result.user != null) {

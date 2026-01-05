@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/auth/auth_state.dart';
 import '../../features/auth/session_providers.dart';
 import 'church_providers.dart';
 import 'models/join_church_result.dart';
@@ -35,7 +34,7 @@ class JoinChurchController extends AutoDisposeAsyncNotifier<JoinChurchState> {
       await ref.read(authTokenProvider.notifier).setToken(result.token);
 
       // Refresh global auth state (will fetch /auth/me and detect churchId)
-      ref.invalidate(authStateProvider);
+      ref.invalidate(currentUserProvider);
 
       // Reset join state after success
       state = const AsyncData(JoinChurchState(joiningChurchId: null));

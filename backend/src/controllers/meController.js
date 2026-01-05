@@ -13,7 +13,12 @@ async function getInventory(req, res, next) {
     const items = await inventoryService.getUserInventory(userId);
 
     return res.status(200).json({
-      items,
+      items: items.map((it) => ({
+        id: it.id,
+        itemKey: it.itemKey,
+        acquiredAt: it.acquiredAt,
+        quantity: it.quantity
+      })),
       total: items.length
     });
   } catch (err) {

@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_error.dart';
-import '../../auth/auth_state.dart';
 import '../../auth/session_providers.dart';
 import '../../submissions/create_submission_controller.dart';
 import '../../submissions/models/submission_action_result.dart';
@@ -76,7 +75,7 @@ class SubmissionActionsController extends Notifier<Set<String>> {
   Future<void> _handleSessionErrors(AppError e) async {
     if (e.code == 'UNAUTHORIZED') {
       await ref.read(authTokenProvider.notifier).clearToken();
-      ref.invalidate(authStateProvider);
+      ref.invalidate(currentUserProvider);
     }
   }
 }

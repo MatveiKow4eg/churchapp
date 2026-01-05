@@ -23,7 +23,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
   final _descCtrl = TextEditingController();
   final _pointsCtrl = TextEditingController(text: '10');
 
-  String _category = 'GENERAL';
+  String _category = 'OTHER';
   bool _saving = false;
 
   @override
@@ -46,7 +46,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     final s = (v ?? '').trim();
     if (s.isEmpty) return 'Введите описание';
     if (s.length < 10) return 'Минимум 10 символов';
-    if (s.length > 800) return 'Максимум 800 символов';
+    if (s.length > 2000) return 'Максимум 2000 символов';
     return null;
   }
 
@@ -55,7 +55,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
     final n = int.tryParse(s);
     if (n == null) return 'Введите число';
     if (n < 1) return 'Минимум 1';
-    if (n > 100000) return 'Слишком много';
+    if (n > 10000) return 'Максимум 10000';
     return null;
   }
 
@@ -145,14 +145,15 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen> {
               DropdownButtonFormField<String>(
                 value: _category,
                 items: const [
-                  DropdownMenuItem(value: 'GENERAL', child: Text('GENERAL')),
-                  DropdownMenuItem(value: 'PRAYER', child: Text('PRAYER')),
+                  DropdownMenuItem(value: 'SPIRITUAL', child: Text('SPIRITUAL')),
                   DropdownMenuItem(value: 'SERVICE', child: Text('SERVICE')),
-                  DropdownMenuItem(value: 'BIBLE', child: Text('BIBLE')),
+                  DropdownMenuItem(value: 'COMMUNITY', child: Text('COMMUNITY')),
+                  DropdownMenuItem(value: 'CREATIVITY', child: Text('CREATIVITY')),
+                  DropdownMenuItem(value: 'OTHER', child: Text('OTHER')),
                 ],
                 onChanged: _saving
                     ? null
-                    : (v) => setState(() => _category = v ?? 'GENERAL'),
+                    : (v) => setState(() => _category = v ?? 'OTHER'),
                 decoration: const InputDecoration(
                   labelText: 'Категория',
                   border: OutlineInputBorder(),

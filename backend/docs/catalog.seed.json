@@ -1,0 +1,12 @@
+[
+  { "itemKey": "hat_baseball_red", "pricePoints": 100, "isActive": true },
+  { "itemKey": "hat_beanie_black", "pricePoints": 120, "isActive": true },
+  { "itemKey": "top_hoodie_blue", "pricePoints": 250, "isActive": true },
+  { "itemKey": "top_tshirt_white", "pricePoints": 150, "isActive": true },
+  { "itemKey": "bottom_jeans_dark", "pricePoints": 180, "isActive": true },
+  { "itemKey": "bottom_skirt_green", "pricePoints": 220, "isActive": true },
+  { "itemKey": "shoes_sneakers_white", "pricePoints": 200, "isActive": true },
+  { "itemKey": "shoes_boots_brown", "pricePoints": 450, "isActive": true },
+  { "itemKey": "acc_glasses_round", "pricePoints": 300, "isActive": true },
+  { "itemKey": "acc_necklace_cross", "pricePoints": 500, "isActive": true }
+]

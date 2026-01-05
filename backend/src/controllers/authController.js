@@ -57,9 +57,14 @@ async function login(req, res, next) {
         id: true,
         role: true,
         churchId: true,
+        status: true,
         passwordHash: true
       }
     });
+
+    if (user && user.status === 'BANNED') {
+      throw new HttpError(403, 'FORBIDDEN', 'User is banned');
+    }
 
     if (!user || !user.passwordHash) {
       throw new HttpError(401, 'INVALID_CREDENTIALS', 'Invalid credentials');

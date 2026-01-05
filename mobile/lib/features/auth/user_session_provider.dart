@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'auth_state.dart';
 import 'models/user_model.dart';
 import 'session_providers.dart';
 
@@ -11,18 +10,8 @@ import 'session_providers.dart';
 /// - Fallback to [currentUserProvider] (legacy cache/in-memory saved user).
 /// - Always guarantees a non-null, normalized role string when user exists.
 final userSessionProvider = Provider<UserModel?>((ref) {
-  final authAsync = ref.watch(authStateProvider);
-
-  UserModel? user;
-
-  final auth = authAsync.valueOrNull;
-  if (auth is AuthenticatedNoChurch) {
-    user = auth.user;
-  } else if (auth is AuthenticatedReady) {
-    user = auth.user;
-  } else {
-    user = ref.watch(currentUserProvider);
-  }
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
 
   if (user == null) return null;
 
@@ -40,8 +29,14 @@ final userSessionProvider = Provider<UserModel?>((ref) {
   );
 });
 
-final userRoleProvider = Provider<String>((ref) {
-  return ref.watch(userSessionProvider)?.role ?? 'USER';
+/// Derived role from server-confirmed user.
+///
+/// IMPORTANT: do not default to USER when role is unknown while loading.
+/// Router/guards should rely on [currentUserProvider] and only treat
+/// a user as authenticated when AsyncValue has non-null data.
+final userRoleProvider = Provider<String?>((ref) {
+  final userAsync = ref.watch(currentUserProvider);
+  return userAsync.valueOrNull?.role;
 });
 
 final isAdminProvider = Provider<bool>((ref) {

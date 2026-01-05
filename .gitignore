@@ -1,0 +1,35 @@
+# Env
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.npm/
+yarn-error.log
+pnpm-debug.log
+npm-debug.log
+
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+
+# iOS/Android
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+android/.gradle/
+android/local.properties
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store

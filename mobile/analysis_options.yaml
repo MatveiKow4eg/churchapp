@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Минимальные настройки; расширяйте по мере надобности
+    - prefer_single_quotes

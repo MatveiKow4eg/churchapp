@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store

@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPERADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+}
+
+enum TaskCategory {
+  SPIRITUAL
+  SERVICE
+  COMMUNITY
+  CREATIVITY
+  OTHER
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELED
+}
+
+enum LedgerType {
+  TASK_REWARD
+  PURCHASE
+  ADMIN_ADJUSTMENT
+}
+
+enum ShopItemType {
+  COSMETIC
+  UPGRADE
+  BADGE
+  OTHER
+}
+
+// Минимальная тестовая модель для проверки миграций.
+model HealthPing {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+}
+
+// Church — минимальная модель только для связи с User.
+// Не расширяем бизнес-логику на этом шаге.
+model Church {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  city          String?
+  users         User[]
+  tasks         Task[]
+  submissions   Submission[]
+  ledgerEntries PointsLedger[]
+  shopItems     ShopItem[]
+  createdAt     DateTime       @default(now())
+}
+
+model User {
+  id        String     @id @default(cuid())
+  firstName String
+  lastName  String
+  age       Int
+  city      String
+
+  // Auth
+  // Nullable for backward-compatible migration (existing users).
+  email        String?  @unique
+  passwordHash String?
+
+  role      UserRole   @default(USER)
+  status    UserStatus @default(ACTIVE)
+
+  churchId String?
+  church   Church? @relation(fields: [churchId], references: [id], onDelete: SetNull)
+
+  submissions   Submission[]
+  ledgerEntries PointsLedger[]
+  inventory     Inventory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId])
+  @@index([lastName])
+}
+
+model Task {
+  id String @id @default(cuid())
+
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  title        String
+  description  String
+  category     TaskCategory @default(OTHER)
+  pointsReward Int
+
+  isActive Boolean @default(true)
+
+  // пока просто поле (без relation на User)
+  createdById String?
+
+  submissions Submission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId])
+  @@index([isActive])
+  @@index([category])
+}
+
+model Submission {
+  id String @id @default(cuid())
+
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  taskId String
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status SubmissionStatus @default(PENDING)
+
+  commentUser  String?
+  commentAdmin String?
+
+  decidedAt   DateTime?
+  decidedById String?
+
+  rewardPointsApplied Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId])
+  @@index([taskId])
+  @@index([userId])
+  @@index([status])
+
+  @@unique([userId, taskId])
+}
+
+model PointsLedger {
+  id String @id @default(cuid())
+
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   LedgerType
+  amount Int
+
+  meta Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([churchId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ShopItem {
+  id String @id @default(cuid())
+
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String
+  type        ShopItemType @default(OTHER)
+  pricePoints Int
+
+  isActive Boolean @default(true)
+
+  inventory Inventory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([churchId])
+  @@index([isActive])
+  @@index([type])
+
+  @@unique([churchId, name])
+}
+
+model Inventory {
+  id String @id @default(cuid())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  itemId String
+  item   ShopItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  quantity Int @default(1)
+
+  acquiredAt DateTime @default(now())
+
+  @@unique([userId, itemId])
+  @@index([userId])
+  @@index([itemId])
+}

@@ -39,9 +39,23 @@ class BaseUrlNotifier extends AsyncNotifier<String> {
   }
 }
 
+/// Marker used while baseUrlProvider is still loading.
+///
+/// We must NOT default to empty string during loading because it creates a
+/// short-lived "baseUrl == ''" state that can trigger invalid network calls
+/// and auth redirect loops.
+const kBaseUrlLoadingMarker = '__LOADING__';
+
 final appConfigProvider = Provider<AppConfig>((ref) {
   final baseUrlAsync = ref.watch(baseUrlProvider);
-  final baseUrl = baseUrlAsync.valueOrNull ?? '';
+
+  final baseUrl = baseUrlAsync.when(
+    data: (v) => v,
+    loading: () => kBaseUrlLoadingMarker,
+    // If baseUrl failed to load, treat as not configured.
+    error: (_, __) => '',
+  );
+
   return AppConfig(baseUrl: baseUrl);
 });
 
@@ -51,6 +65,13 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   // We intentionally do NOT read token directly from SecureStore here, because
   // SecureStore is async and can lag behind after login.
   final config = ref.watch(appConfigProvider);
+
+  if (config.baseUrl == kBaseUrlLoadingMarker) {
+    throw StateError('ApiClient requested while baseUrl is still loading');
+  }
+  if (config.baseUrl.isEmpty) {
+    throw StateError('ApiClient requested while baseUrl is empty (not configured)');
+  }
 
   // Watch token so ApiClient always uses the latest value.
   final tokenAsync = ref.watch(authTokenProvider);

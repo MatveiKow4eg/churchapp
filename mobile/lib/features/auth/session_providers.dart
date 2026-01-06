@@ -21,14 +21,18 @@ final currentUserProvider = AsyncNotifierProvider<CurrentUserNotifier, UserModel
 class CurrentUserNotifier extends AsyncNotifier<UserModel?> {
   @override
   Future<UserModel?> build() async {
-    // Hard dependency on token resolution to avoid calling /auth/me without token.
-    // Waiting on .future guarantees we don't run while authTokenProvider is loading.
+    // Resolve required gates exactly once per dependency change.
+    // Using `.future` here is correct: it blocks until resolved.
     final token = await ref.watch(authTokenProvider.future);
+    final baseUrl = await ref.watch(baseUrlProvider.future);
 
-    if (token == null || token.isEmpty) {
-      // Stable "no token" state -> unauthenticated, no /auth/me request.
-      return null;
-    }
+    // Hard gate: never call /auth/me without both baseUrl and token.
+    if (baseUrl.isEmpty) return null;
+    if (token == null || token.isEmpty) return null;
+
+    // IMPORTANT: do NOT watch providers again here.
+    // Watching in build would make this provider rebuild and re-call /auth/me
+    // on unrelated refresh cycles.
 
     final repo = ref.read(authRepositoryProvider);
     final me = await repo.me();

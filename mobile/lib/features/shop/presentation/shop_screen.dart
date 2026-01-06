@@ -4,9 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/errors/app_error.dart';
-import '../../catalog/catalog_providers.dart';
-import '../../inventory/inventory_providers.dart';
-import '../models/shop_item_model.dart';
+import '../models/shop_view_item.dart';
 import '../shop_providers.dart';
 
 class ShopScreen extends ConsumerWidget {
@@ -14,100 +12,74 @@ class ShopScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Step 14.5.1: temporary local catalog rendering from assets.
-    final async = ref.watch(catalogProvider);
+    final theme = Theme.of(context);
+
+    final balance = ref.watch(balanceProvider);
+    final async = ref.watch(shopViewItemsProvider);
 
     Future<void> onRefresh() async {
-      ref.invalidate(catalogProvider);
+      ref.invalidate(shopViewItemsProvider);
+      ref.invalidate(serverShopItemsProvider);
+      ref.invalidate(ownedKeysProvider);
     }
+
+    final crossAxisCount = MediaQuery.of(context).size.shortestSide >= 600 ? 3 : 2;
 
     Widget body = async.when(
       data: (items) {
         if (items.isEmpty) {
-          return const _CatalogEmptyState();
+          return RefreshIndicator(
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: const [
+                SizedBox(height: 48),
+                Center(child: Text('Пока нет предметов в магазине')),
+              ],
+            ),
+          );
         }
 
         return RefreshIndicator(
           onRefresh: onRefresh,
           child: GridView.builder(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.82,
+              childAspectRatio: 0.74,
             ),
             itemCount: items.length,
             itemBuilder: (context, i) {
               final item = items[i];
-
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            item.iconPath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, st) {
-                              return Container(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest,
-                                alignment: Alignment.center,
-                                child: const Icon(Icons.image_not_supported_outlined),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        item.displayName(locale: 'ru'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${item.slot} • ${item.rarity}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Цена: ${item.price}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelLarge
-                            ?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _ShopGridCard(item: item);
             },
           ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, st) {
-        final msg = err.toString();
+        if (err is AppError && err.code == 'NO_CHURCH') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) context.go(AppRoutes.church);
+          });
+        }
+
+        if (err is AppError && err.code == 'UNAUTHORIZED') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) context.go(AppRoutes.register);
+          });
+        }
+
+        final msg = (err is AppError && err.message.isNotEmpty)
+            ? err.message
+            : 'Не удалось загрузить магазин';
+
         return _ErrorState(
-          message: msg.isNotEmpty ? msg : 'Не удалось загрузить каталог',
-          onRetry: () => ref.invalidate(catalogProvider),
+          message: msg,
+          onRetry: () => ref.invalidate(shopViewItemsProvider),
         );
       },
     );
@@ -127,115 +99,61 @@ class ShopScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: body,
-    );
-  }
-}
-
-class _CatalogEmptyState extends StatelessWidget {
-  const _CatalogEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        const SizedBox(height: 48),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.inventory_2_outlined,
-                    size: 48, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(height: 12),
-                Text(
-                  'Каталог пуст',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Проверь assets/catalog/catalog.json',
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.balance});
-
-  final int? balance;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Icon(
-              Icons.account_balance_wallet_outlined,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Баланс: ${balance ?? '—'}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
+      body: Column(
+        children: [
+          if (balance != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Баланс: $balance',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          Expanded(child: body),
+        ],
       ),
     );
   }
 }
 
-class _ShopItemCard extends ConsumerWidget {
-  const _ShopItemCard({
-    required this.item,
-    required this.isOwned,
-    required this.isLoading,
-  });
+class _ShopGridCard extends ConsumerWidget {
+  const _ShopGridCard({required this.item});
 
-  final ShopItemModel item;
-  final bool isOwned;
-  final bool isLoading;
+  final ShopViewItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final loadingKey = ref.watch(purchaseLoadingKeyProvider);
+    final isLoading = loadingKey == item.key;
 
-    final String name = item.name;
-    final String description = item.description;
-    final String type = item.type;
-    final int pricePoints = item.pricePoints;
+    final bool canBuy = !item.owned && item.isActive;
 
-    Future<void> buy() async {
+    Future<void> onBuy() async {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (dialogContext) {
           return AlertDialog(
             title: const Text('Подтверди покупку'),
-            content: Text('Купить $name за $pricePoints очков?'),
+            content: Text('Купить ${item.name} за ${item.pricePoints} очков?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -252,191 +170,76 @@ class _ShopItemCard extends ConsumerWidget {
 
       if (confirmed != true) return;
 
-      final rootScaffoldMessenger = ScaffoldMessenger.of(context);
-      final rootRouter = GoRouter.of(context);
-
-      ref.read(purchaseLoadingItemIdProvider.notifier).state = item.id;
-
-      try {
-        final repo = ref.read(shopRepositoryProvider);
-        final result = await repo.purchaseItem(item.id);
-
-        // Cache balance locally (we don't fetch /me/balance yet).
-        ref.read(balanceProvider.notifier).state = result.balance;
-
-        // Refresh inventory (source of truth) + owned item ids.
-        await ref.read(inventoryItemsProvider.notifier).refresh();
-
-        rootScaffoldMessenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Куплено!')));
-      } on AppError catch (e) {
-        if (e.code == 'NO_CHURCH') {
-          rootRouter.go(AppRoutes.church);
-          return;
-        }
-        if (e.code == 'UNAUTHORIZED') {
-          rootRouter.go(AppRoutes.register);
-          return;
-        }
-
-        final msgLower = e.message.toLowerCase();
-        final msg = msgLower.contains('insufficient')
-            ? 'Недостаточно очков'
-            : msgLower.contains('already owned')
-                ? 'Уже куплено'
-                : msgLower.contains('item inactive')
-                    ? 'Предмет недоступен'
-                    : (e.message.isNotEmpty ? e.message : 'Ошибка сети');
-
-        rootScaffoldMessenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(msg)));
-      } catch (_) {
-        rootScaffoldMessenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Ошибка сети')));
-      } finally {
-        final current = ref.read(purchaseLoadingItemIdProvider);
-        if (current == item.id) {
-          ref.read(purchaseLoadingItemIdProvider.notifier).state = null;
-        }
-      }
+      final controller = PurchaseController(ref);
+      await controller.purchase(context, item.key);
     }
 
+    final buttonText = item.owned
+        ? 'Куплено'
+        : (!item.isActive ? 'Недоступно' : 'Купить');
+
     return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    name.isEmpty ? 'Предмет' : name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  item.iconPath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, st) {
+                    return Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported_outlined),
+                    );
+                  },
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  'Цена: $pricePoints',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                _TypeBadge(text: type.isEmpty ? '—' : type),
-                const Spacer(),
-                FilledButton(
-                  onPressed: (isOwned || isLoading) ? null : buy,
-                  child: isOwned
-                      ? const Text('Куплено')
-                      : (isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Купить')),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TypeBadge extends StatelessWidget {
-  const _TypeBadge({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          text,
-          style: theme.textTheme.labelMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        _BalanceCard(balance: null),
-        SizedBox(height: 48),
-        _EmptyBody(),
-      ],
-    );
-  }
-}
-
-class _EmptyBody extends StatelessWidget {
-  const _EmptyBody();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.storefront_outlined,
-                size: 48, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(height: 12),
             Text(
-              'Пока нет предметов',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
-              textAlign: TextAlign.center,
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
-              'Загляни позже — магазин скоро пополнится.',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
+              '${item.slot} • ${item.rarity}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${item.pricePoints}',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 40,
+              child: FilledButton(
+                onPressed: (!canBuy || isLoading) ? null : onBuy,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(buttonText),
+              ),
             ),
           ],
         ),

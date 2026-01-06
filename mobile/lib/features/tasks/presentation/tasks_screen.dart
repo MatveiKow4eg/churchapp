@@ -85,23 +85,35 @@ class TasksScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Мои заявки',
-            onPressed: () => context.go(AppRoutes.submissionsMine),
+            onPressed: () {
+              debugPrint('[TasksScreen] AppBar: submissions tapped');
+              context.go(AppRoutes.submissionsMine);
+            },
             icon: const Icon(Icons.assignment_outlined),
           ),
           IconButton(
             tooltip: 'Магазин',
-            onPressed: goShop,
+            onPressed: () {
+              debugPrint('[TasksScreen] AppBar: shop tapped');
+              goShop();
+            },
             icon: const Icon(Icons.storefront_outlined),
           ),
           IconButton(
             tooltip: 'Статистика',
-            onPressed: goStats,
+            onPressed: () {
+              debugPrint('[TasksScreen] AppBar: stats tapped');
+              goStats();
+            },
             icon: const Icon(Icons.bar_chart_outlined),
           ),
           if (isAdmin)
             IconButton(
               tooltip: 'Админ',
-              onPressed: () => context.go(AppRoutes.admin),
+              onPressed: () {
+                debugPrint('[TasksScreen] AppBar: admin tapped');
+                context.go(AppRoutes.admin);
+              },
               icon: const Icon(Icons.admin_panel_settings_outlined),
             ),
         ],

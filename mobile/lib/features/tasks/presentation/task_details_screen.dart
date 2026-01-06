@@ -26,6 +26,32 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Задание'),
+        actions: [
+          IconButton(
+            tooltip: 'Мои заявки',
+            onPressed: () {
+              debugPrint('[TaskDetailsScreen] AppBar: submissions tapped');
+              context.go(AppRoutes.submissionsMine);
+            },
+            icon: const Icon(Icons.assignment_outlined),
+          ),
+          IconButton(
+            tooltip: 'Магазин',
+            onPressed: () {
+              debugPrint('[TaskDetailsScreen] AppBar: shop tapped');
+              context.go(AppRoutes.shop);
+            },
+            icon: const Icon(Icons.storefront_outlined),
+          ),
+          IconButton(
+            tooltip: 'Статистика',
+            onPressed: () {
+              debugPrint('[TaskDetailsScreen] AppBar: stats tapped');
+              context.go(AppRoutes.stats);
+            },
+            icon: const Icon(Icons.bar_chart_outlined),
+          ),
+        ],
       ),
       body: async.when(
         data: (task) {

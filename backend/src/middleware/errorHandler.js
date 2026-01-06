@@ -58,4 +58,8 @@ function errorHandler(err, req, res, next) {
   });
 }
 
+// NOTE:
+// We intentionally export only the middleware function.
+// JSON formatting is handled by Express' res.json(); never manually stringify.
+
 module.exports = { errorHandler };

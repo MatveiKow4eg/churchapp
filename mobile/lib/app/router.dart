@@ -118,109 +118,53 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final baseUrlAsync = ref.read(baseUrlProvider);
       final loc = state.matchedLocation;
 
-      // 0) While baseUrl is loading from storage, do not make any decision
-      // other than keeping user on /splash.
-      if (baseUrlAsync.isLoading) {
+      // Read all gate providers. GoRouter will re-run redirect via refreshListenable.
+      final baseUrlAsync = ref.read(baseUrlProvider);
+      final tokenAsync = ref.read(authTokenProvider);
+      final userAsync = ref.read(currentUserProvider);
+
+      // 1) LOADING gate: splash is used ONLY as loading screen.
+      // If anything required for routing is still resolving, force /splash.
+      if (baseUrlAsync.isLoading || tokenAsync.isLoading || userAsync.isLoading) {
         return loc == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
-      // If baseUrl failed to load, keep user on /splash (SplashScreen shows actions).
-      if (baseUrlAsync.hasError) {
-        return loc == AppRoutes.splash ? null : AppRoutes.splash;
-      }
-
-      final baseUrl = baseUrlAsync.value ?? '';
-
-      // 1) Base URL gate: must be configured first.
-      // If baseUrl is missing, ALWAYS send to /server.
+      // 2) BaseUrl gate
+      final baseUrl = baseUrlAsync.valueOrNull ?? '';
       if (baseUrl.isEmpty) {
+        // Server setup must be reachable only in "no baseUrl" state.
         return loc == AppRoutes.server ? null : AppRoutes.server;
       }
 
-      // /server is always accessible
-      if (loc == AppRoutes.server) return null;
+      // If baseUrl is configured, /server must not be a terminal location.
+      if (loc == AppRoutes.server) return AppRoutes.splash;
 
-      // /splash is not a terminal state. If we are on /splash and all required
-      // state is already resolved, redirect will move us away.
+      // 3) Auth gate (token + user)
+      final token = tokenAsync.valueOrNull;
+      final user = userAsync.valueOrNull;
 
-      // Token must be resolved before we can make any auth decision.
-      final tokenAsync = ref.read(authTokenProvider);
-      if (tokenAsync.isLoading) {
-        return loc == AppRoutes.splash ? null : AppRoutes.splash;
-      }
-
-      final userAsync = ref.read(currentUserProvider);
-
-      // While /auth/me is being resolved, stay on splash.
-      if (userAsync.isLoading) {
-        return loc == AppRoutes.splash ? null : AppRoutes.splash;
-      }
-
-      // If /auth/me failed, clear token and go to /login.
-      if (userAsync.hasError) {
-        ref.read(authTokenProvider.notifier).clearToken();
+      // If token is missing OR session resolved as unauthenticated -> /login.
+      if (token == null || token.isEmpty || user == null) {
         return loc == AppRoutes.login ? null : AppRoutes.login;
       }
 
-      final user = userAsync.value;
-
-      // DEBUG (temporary)
-      final token = ref.read(authTokenProvider).valueOrNull;
-      // ignore: avoid_print
-      print(
-        '[router] loc=$loc token=${token == null ? 'null' : token.substring(0, token.length < 20 ? token.length : 20)} user=${user == null ? 'null' : user.id} role=${user?.role} churchId=${user?.churchId}',
-      );
-
-      // Unauthenticated: no user.
-      if (user == null) {
-        if (loc == AppRoutes.login || loc == AppRoutes.register) return null;
-        return AppRoutes.login;
-      }
-
-      // We derive role/churchId from the server-confirmed user (via /auth/me).
-      final role = user.role;
+      // 4) User is present: route by church flow
       final churchId = user.churchId;
-      final isSuperAdmin = role == 'SUPERADMIN';
-
-      // Guard: /superadmin must be accessible ONLY for real SUPERADMIN.
-      if (loc == AppRoutes.superadmin && !isSuperAdmin) {
-        // If you're not superadmin, don't allow manual deep-link to superadmin.
-        return AppRoutes.forbidden;
-      }
-
-      // SUPERADMIN must never be forced into church selection.
-      if (isSuperAdmin) {
-        // Allow them only /superadmin (and also let /403 be reachable)
-        if (loc == AppRoutes.superadmin || loc == AppRoutes.forbidden) {
-          return null;
-        }
-        return AppRoutes.superadmin;
-      }
-
-      // Non-superadmin users without church must complete church flow.
       if (churchId == null) {
-        if (loc == AppRoutes.church) return null;
-        return AppRoutes.church;
+        return loc == AppRoutes.church ? null : AppRoutes.church;
       }
 
-      // Non-superadmin users with church: block auth/church screens.
-      if (loc == AppRoutes.register ||
+      // User is fully allowed. Do not force redirect on every navigation.
+      // Only send to /tasks from bootstrap/auth flow locations.
+      if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
+          loc == AppRoutes.register ||
+          loc == AppRoutes.server ||
           loc == AppRoutes.church) {
         return AppRoutes.tasks;
       }
-
-      // Admin guard (for ADMIN only; SUPERADMIN already handled above)
-      if (loc == AppRoutes.admin || loc.startsWith('${AppRoutes.admin}/')) {
-        final isAdmin = ref.read(isAdminProvider);
-        if (!isAdmin) {
-          return AppRoutes.forbidden;
-        }
-      }
-
       return null;
     },
     errorBuilder: (context, state) => Scaffold(

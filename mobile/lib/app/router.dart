@@ -32,6 +32,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.server,
     refreshListenable: refreshListenable,
     routes: <RouteBase>[
+      // Bootstrap / auth flow routes (no bottom navigation)
       GoRoute(
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
@@ -52,57 +53,68 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.church,
         builder: (context, state) => const ChurchSelectScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.tasks,
-        builder: (context, state) => const TasksScreen(),
+
+      // App shell (bottom navigation)
+      ShellRoute(
+        builder: (context, state, child) => _AppShell(
+          location: state.matchedLocation,
+          child: child,
+        ),
         routes: <RouteBase>[
           GoRoute(
-            path: ':id',
-            builder: (context, state) {
-              final id = state.pathParameters['id'] ?? '';
-              return TaskDetailsScreen(taskId: id);
-            },
-          ),
-        ],
-      ),
-      GoRoute(
-        path: AppRoutes.shop,
-        builder: (context, state) => const ShopScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.inventory,
-        builder: (context, state) => const InventoryScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.stats,
-        builder: (context, state) => const StatsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.submissionsMine,
-        builder: (context, state) => const MySubmissionsScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.admin,
-        builder: (context, state) => const AdminPanelScreen(),
-        routes: <RouteBase>[
-          GoRoute(
-            path: 'pending',
-            builder: (context, state) => const PendingSubmissionsScreen(),
-          ),
-          GoRoute(
-            path: 'tasks',
-            builder: (context, state) => const AdminTasksScreen(),
+            path: AppRoutes.tasks,
+            builder: (context, state) => const TasksScreen(),
             routes: <RouteBase>[
               GoRoute(
-                path: 'new',
-                builder: (context, state) => const CreateTaskScreen(),
-              ),
-              GoRoute(
-                path: ':id/edit',
+                path: ':id',
                 builder: (context, state) {
                   final id = state.pathParameters['id'] ?? '';
-                  return EditTaskScreen(taskId: id);
+                  return TaskDetailsScreen(taskId: id);
                 },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: AppRoutes.shop,
+            builder: (context, state) => const ShopScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.inventory,
+            builder: (context, state) => const InventoryScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.stats,
+            builder: (context, state) => const StatsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.submissionsMine,
+            builder: (context, state) => const MySubmissionsScreen(),
+          ),
+          // Admin inside shell so bottom navigation stays visible.
+          GoRoute(
+            path: AppRoutes.admin,
+            builder: (context, state) => const AdminPanelScreen(),
+            routes: <RouteBase>[
+              GoRoute(
+                path: 'pending',
+                builder: (context, state) => const PendingSubmissionsScreen(),
+              ),
+              GoRoute(
+                path: 'tasks',
+                builder: (context, state) => const AdminTasksScreen(),
+                routes: <RouteBase>[
+                  GoRoute(
+                    path: 'new',
+                    builder: (context, state) => const CreateTaskScreen(),
+                  ),
+                  GoRoute(
+                    path: ':id/edit',
+                    builder: (context, state) {
+                      final id = state.pathParameters['id'] ?? '';
+                      return EditTaskScreen(taskId: id);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -184,15 +196,110 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const login = '/login';
   static const church = '/church';
+
+  // Main tabs
   static const tasks = '/tasks';
-  static const submissionsMine = '/submissions/mine';
   static const shop = '/shop';
   static const inventory = '/inventory';
   static const stats = '/stats';
+  static const submissionsMine = '/submissions/mine';
+
+  // Admin
   static const admin = '/admin';
   static const superadmin = '/superadmin';
   static const forbidden = '/403';
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
+}
+
+final class _AppShell extends ConsumerWidget {
+  const _AppShell({
+    required this.location,
+    required this.child,
+  });
+
+  final String location;
+  final Widget child;
+
+  List<String> _tabs({required bool isAdmin}) {
+    // Order matters: index in this list == NavigationBar index.
+    final tabs = <String>[
+      AppRoutes.tasks,
+      AppRoutes.shop,
+      AppRoutes.inventory,
+      AppRoutes.stats,
+      AppRoutes.submissionsMine,
+    ];
+    if (isAdmin) tabs.add(AppRoutes.admin);
+    return tabs;
+  }
+
+  int _indexFromLocation(String loc, {required List<String> tabs}) {
+    for (var i = 0; i < tabs.length; i++) {
+      if (loc.startsWith(tabs[i])) return i;
+    }
+    return 0;
+  }
+
+  String _locationFromIndex(int index, {required List<String> tabs}) {
+    if (index < 0 || index >= tabs.length) return AppRoutes.tasks;
+    return tabs[index];
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(isAdminProvider);
+    final tabs = _tabs(isAdmin: isAdmin);
+
+    final currentIndex = _indexFromLocation(location, tabs: tabs);
+
+    final destinations = <NavigationDestination>[
+      const NavigationDestination(
+        icon: Icon(Icons.checklist_outlined),
+        selectedIcon: Icon(Icons.checklist),
+        label: '',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.storefront_outlined),
+        selectedIcon: Icon(Icons.storefront),
+        label: '',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.inventory_2_outlined),
+        selectedIcon: Icon(Icons.inventory_2),
+        label: '',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.bar_chart_outlined),
+        selectedIcon: Icon(Icons.bar_chart),
+        label: '',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.inbox_outlined),
+        selectedIcon: Icon(Icons.inbox),
+        label: '',
+      ),
+      if (isAdmin)
+        const NavigationDestination(
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          selectedIcon: Icon(Icons.admin_panel_settings),
+          label: '',
+        ),
+    ];
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+        onDestinationSelected: (idx) {
+          final target = _locationFromIndex(idx, tabs: tabs);
+          if (target == location) return;
+          context.go(target);
+        },
+        destinations: destinations,
+      ),
+    );
+  }
 }

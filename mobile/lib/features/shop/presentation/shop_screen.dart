@@ -87,17 +87,6 @@ class ShopScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Магазин'),
-        actions: [
-          IconButton(
-            tooltip: 'Статистика',
-            onPressed: () => context.go(AppRoutes.stats),
-            icon: const Icon(Icons.bar_chart_outlined),
-          ),
-          TextButton(
-            onPressed: () => context.go(AppRoutes.inventory),
-            child: const Text('Инвентарь'),
-          ),
-        ],
       ),
       body: Column(
         children: [

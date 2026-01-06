@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers/providers.dart';
 import '../../core/errors/app_error.dart';
 import '../auth/session_providers.dart';
+import '../tasks/tasks_providers.dart';
 import 'models/submission_model.dart';
+import 'my_submissions_providers.dart';
 import 'submissions_repository.dart';
 
 final submissionsRepositoryProvider = Provider<SubmissionsRepository>((ref) {
@@ -32,6 +34,11 @@ class CreateSubmissionController
         taskId: taskId,
         commentUser: commentUser,
       );
+
+      // Make tasks list and "my submissions" refresh immediately.
+      // This hides the task from "Tasks" when it becomes PENDING.
+      ref.invalidate(mySubmissionsListProvider);
+      ref.invalidate(tasksListProvider);
 
       state = AsyncData(submission);
       return submission;

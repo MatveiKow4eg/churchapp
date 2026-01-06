@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ui/app_theme.dart';
 import 'router.dart';
 
 class App extends ConsumerWidget {
@@ -12,10 +13,8 @@ class App extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'App MVP',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark(),
       routerConfig: router,
     );
   }

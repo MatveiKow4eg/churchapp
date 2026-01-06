@@ -82,41 +82,6 @@ class TasksScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Задания'),
-        actions: [
-          IconButton(
-            tooltip: 'Мои заявки',
-            onPressed: () {
-              debugPrint('[TasksScreen] AppBar: submissions tapped');
-              context.go(AppRoutes.submissionsMine);
-            },
-            icon: const Icon(Icons.assignment_outlined),
-          ),
-          IconButton(
-            tooltip: 'Магазин',
-            onPressed: () {
-              debugPrint('[TasksScreen] AppBar: shop tapped');
-              goShop();
-            },
-            icon: const Icon(Icons.storefront_outlined),
-          ),
-          IconButton(
-            tooltip: 'Статистика',
-            onPressed: () {
-              debugPrint('[TasksScreen] AppBar: stats tapped');
-              goStats();
-            },
-            icon: const Icon(Icons.bar_chart_outlined),
-          ),
-          if (isAdmin)
-            IconButton(
-              tooltip: 'Админ',
-              onPressed: () {
-                debugPrint('[TasksScreen] AppBar: admin tapped');
-                context.go(AppRoutes.admin);
-              },
-              icon: const Icon(Icons.admin_panel_settings_outlined),
-            ),
-        ],
       ),
       body: body,
     );

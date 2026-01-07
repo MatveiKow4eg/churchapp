@@ -26,6 +26,8 @@ final userSessionProvider = Provider<UserModel?>((ref) {
     role: role.isEmpty ? 'USER' : role,
     status: user.status,
     churchId: user.churchId,
+    avatarConfig: user.avatarConfig,
+    avatarUpdatedAt: user.avatarUpdatedAt,
   );
 });
 

@@ -14,7 +14,20 @@ class AdminPanelScreen extends ConsumerWidget {
     final isSuperadmin = role == 'SUPERADMIN' || role == 'SUPERADMIN';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Админ-панель')),
+      appBar: AppBar(
+        title: const Text('Админ-панель'),
+        leading: IconButton(
+          tooltip: 'Назад',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.profile);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
       body: ListView(
         children: [
           ListTile(

@@ -52,9 +52,17 @@ class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
 
   String _normalizeBaseUrl(String value) {
     var v = value.trim();
+
+    // Accept common inputs like "10.0.2.2:3000" and normalize to a valid URL.
+    // Dio requires a scheme in baseUrl.
+    if (v.isNotEmpty && !v.contains('://')) {
+      v = 'http://$v';
+    }
+
     while (v.endsWith('/')) {
       v = v.substring(0, v.length - 1);
     }
+
     return v;
   }
 
@@ -88,7 +96,7 @@ class _ServerSetupScreenState extends ConsumerState<ServerSetupScreen> {
             TextField(
               controller: _controller,
               decoration: const InputDecoration(
-                hintText: 'https://example.com',
+                hintText: 'http://10.0.2.2:3000',
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.url,

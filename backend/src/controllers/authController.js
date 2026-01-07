@@ -92,7 +92,24 @@ async function me(req, res, next) {
     // req.user установлен в authMiddleware
     const { id: userId } = req.user;
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        age: true,
+        city: true,
+        email: true,
+        role: true,
+        status: true,
+        churchId: true,
+        createdAt: true,
+        updatedAt: true,
+        avatarConfig: true,
+        avatarUpdatedAt: true
+      }
+    });
     if (!user) {
       throw new HttpError(404, 'USER_NOT_FOUND', 'User not found');
     }

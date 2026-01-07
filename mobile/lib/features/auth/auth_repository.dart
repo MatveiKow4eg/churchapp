@@ -84,4 +84,29 @@ class AuthRepository {
       throw ApiClient.mapDioError(e);
     }
   }
+
+  Future<UserModel> saveAvatarConfig(Map<String, dynamic> avatarConfig) async {
+    try {
+      final res = await _apiClient.dio.put(
+        '/me/avatar',
+        data: {
+          'avatarConfig': avatarConfig,
+        },
+      );
+
+      final data = res.data;
+      if (data is! Map) {
+        throw const AppError(code: 'bad_response', message: 'Unexpected response');
+      }
+
+      final rawUser = data['user'];
+      if (rawUser is Map) {
+        return UserModel.fromJson(rawUser.cast<String, dynamic>());
+      }
+
+      throw const AppError(code: 'bad_response', message: 'Missing user in response');
+    } catch (e) {
+      throw ApiClient.mapDioError(e);
+    }
+  }
 }

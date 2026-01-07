@@ -24,8 +24,10 @@ import '../features/submissions/my_submissions_screen.dart';
 import '../features/tasks/presentation/task_details_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
 import '../features/avatar/avatar_providers.dart';
+import '../features/avatar/avatar_setup_provider.dart';
 import '../features/avatar/presentation/avatar_thumb_image.dart';
 import '../features/avatar/presentation/avatar_customize_screen.dart';
+import '../features/avatar/presentation/avatar_setup_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshListenable = ref.watch(routerRefreshNotifierProvider);
@@ -55,6 +57,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.church,
         builder: (context, state) => const ChurchSelectScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.avatarSetup,
+        builder: (context, state) => const AvatarSetupScreen(),
       ),
 
       // App shell (bottom navigation)
@@ -217,6 +223,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.church;
       }
 
+      // 5) Avatar setup gate (local stub)
+      // If user is authenticated and already has churchId, but avatar is absent,
+      // always redirect to /avatar/setup (except when already there).
+      final avatarCreatedAsync = ref.read(avatarSetupProvider);
+      // While resolving persisted flag, keep user on splash to avoid false redirect.
+      if (avatarCreatedAsync.isLoading) {
+        return loc == AppRoutes.splash ? null : AppRoutes.splash;
+      }
+      final avatarCreated = avatarCreatedAsync.valueOrNull ?? false;
+      if (!avatarCreated && loc != AppRoutes.avatarSetup) {
+        return AppRoutes.avatarSetup;
+      }
+
       // User has a church: normal flow.
       if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
@@ -252,6 +271,7 @@ abstract final class AppRoutes {
   static const stats = '/stats';
   static const submissionsMine = '/submissions/mine';
   static const avatar = '/avatar';
+  static const avatarSetup = '/avatar/setup';
 
   // Profile / side menu entry point
   static const profile = '/profile';
@@ -278,24 +298,35 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
         final firstName = (user?.firstName ?? '').trim();
         final lastName = (user?.lastName ?? '').trim();
         final name = ('$firstName $lastName').trim();
-        final role = (user?.role ?? '').trim();
+        final roleRaw = (user?.role ?? '').trim();
+        final roleNorm = roleRaw.toUpperCase();
+        final roleLabel = (roleNorm.isEmpty || roleNorm == 'USER') ? '' : roleRaw;
         final avatarUrl = ref.watch(avatarPreviewUrlProvider);
+        final avatarCreated = ref.read(avatarSetupProvider).valueOrNull ?? false;
         return ListTile(
-          leading: CircleAvatar(
-            radius: 24,
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: ClipOval(
-              child: AvatarThumbImage(
-                url: avatarUrl,
-                fit: BoxFit.cover,
-                cacheWidth: 96,
+          leading: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => context.go(AppRoutes.avatarSetup),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: ClipOval(
+                child: AvatarThumbImage(
+                  url: avatarUrl,
+                  fit: BoxFit.cover,
+                  cacheWidth: 96,
+                ),
               ),
             ),
           ),
           title: Text(name.isNotEmpty ? name : 'Пользователь'),
-          subtitle: Text(role.isNotEmpty ? role : ''),
+          subtitle: Text(roleLabel),
           trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.go(AppRoutes.avatar),
+          // Tap on the tile opens profile (kept behavior), avatar opens setup.
+          onTap: () => context.go(
+            avatarCreated ? AppRoutes.profile : AppRoutes.avatarSetup,
+          ),
         );
       },
       loading: () => const ListTile(
@@ -334,7 +365,7 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
             leading: const Icon(Icons.face_outlined),
             title: const Text('Аватар'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go(AppRoutes.avatar),
+            onTap: () => context.go(AppRoutes.avatarSetup),
           ),
                     ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
@@ -344,10 +375,14 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
           ),
           const Divider(height: 24),
           ListTile(
-            leading: const Icon(Icons.account_tree_outlined),
-            title: const Text('Сменить церковь'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go(AppRoutes.church),
+            leading: const Icon(Icons.logout),
+            title: const Text('Log out'),
+            onTap: () async {
+              await ref.read(authTokenProvider.notifier).clearToken();
+              await ref.read(avatarSetupProvider.notifier).clear();
+              ref.invalidate(currentUserProvider);
+              context.go(AppRoutes.login);
+            },
           ),
           Consumer(
             builder: (context, ref, _) {
@@ -423,7 +458,9 @@ final class _AppShell extends ConsumerWidget {
         location.startsWith(AppRoutes.shop) ||
         location.startsWith(AppRoutes.inventory) ||
         location.startsWith(AppRoutes.stats) ||
-        location.startsWith(AppRoutes.church);
+        location.startsWith(AppRoutes.church) ||
+        location.startsWith(AppRoutes.admin) ||
+        location.startsWith(AppRoutes.superadmin);
 
     return Scaffold(
       body: child,

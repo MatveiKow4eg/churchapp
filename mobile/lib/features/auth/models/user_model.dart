@@ -5,6 +5,7 @@ class UserModel {
     required this.lastName,
     required this.age,
     required this.city,
+    required this.email,
     required this.role,
     required this.status,
     required this.churchId,
@@ -17,6 +18,7 @@ class UserModel {
   final String lastName;
   final int age;
   final String city;
+  final String email;
   final String role;
   final String status;
   final String? churchId;
@@ -50,6 +52,7 @@ class UserModel {
       lastName: (json['lastName'] ?? '') as String,
       age: age,
       city: (json['city'] ?? '') as String,
+      email: (json['email'] ?? '') as String,
       role: (json['role'] ?? '') as String,
       status: (json['status'] ?? '') as String,
       churchId: json['churchId']?.toString(),

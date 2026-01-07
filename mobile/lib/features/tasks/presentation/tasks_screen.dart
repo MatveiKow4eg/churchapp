@@ -14,6 +14,7 @@ class TasksScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('TasksScreen build');
     final async = ref.watch(tasksListProvider);
 
     Future<void> onRefresh() async {

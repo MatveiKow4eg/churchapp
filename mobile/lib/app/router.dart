@@ -28,10 +28,18 @@ import '../features/avatar/avatar_setup_provider.dart';
 import '../features/avatar/presentation/avatar_thumb_image.dart';
 import '../features/avatar/presentation/avatar_customize_screen.dart';
 import '../features/avatar/presentation/avatar_setup_screen.dart';
+import '../features/profile/presentation/settings_screen.dart';
+import '../features/profile/presentation/edit_profile_screen.dart';
+import '../features/profile/presentation/change_password_screen.dart';
+import '../features/profile/presentation/change_email_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  debugPrint('appRouterProvider created');
   final refreshListenable = ref.watch(routerRefreshNotifierProvider);
 
+  // IMPORTANT:
+  // Do not `watch` user/auth providers here to avoid recreating GoRouter.
+  // GoRouter must be stable; use refreshListenable + redirect() for re-evaluation.
   return GoRouter(
     // Keep as-is; redirects will enforce correct route.
     initialLocation: AppRoutes.server,
@@ -106,6 +114,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.profile,
             builder: (context, state) => const _ProfileScreenPlaceholder(),
+          ),
+          GoRoute(
+            path: AppRoutes.settings,
+            builder: (context, state) => const SettingsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsEditProfile,
+            builder: (context, state) => const EditProfileScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsChangePassword,
+            builder: (context, state) => const ChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.settingsChangeEmail,
+            builder: (context, state) => const ChangeEmailScreen(),
           ),
           // Admin inside shell so bottom navigation stays visible.
           GoRoute(
@@ -199,7 +223,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             loc.startsWith(AppRoutes.stats) ||
             loc.startsWith(AppRoutes.submissionsMine) ||
             loc.startsWith(AppRoutes.avatar) ||
-            loc.startsWith(AppRoutes.admin);
+            loc.startsWith(AppRoutes.admin) ||
+            loc.startsWith(AppRoutes.profile) ||
+            loc.startsWith(AppRoutes.settings);
 
         // If they are in any bootstrap/auth screens, jump into the shell.
         if (!isInShell &&
@@ -223,27 +249,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return AppRoutes.church;
       }
 
-      // 5) Avatar setup gate (local stub)
+      // 5) Avatar setup gate (server-driven)
+      // Backend stores avatarConfig/avatarUpdatedAt, so rely on /auth/me payload.
       // If user is authenticated and already has churchId, but avatar is absent,
-      // always redirect to /avatar/setup (except when already there).
-      final avatarCreatedAsync = ref.read(avatarSetupProvider);
-      // While resolving persisted flag, keep user on splash to avoid false redirect.
-      if (avatarCreatedAsync.isLoading) {
-        return loc == AppRoutes.splash ? null : AppRoutes.splash;
-      }
-      final avatarCreated = avatarCreatedAsync.valueOrNull ?? false;
-      if (!avatarCreated && loc != AppRoutes.avatarSetup) {
+      // redirect to /avatar/setup (except when already there).
+      final hasAvatar = user.hasAvatar;
+      if (!hasAvatar && loc != AppRoutes.avatarSetup) {
         return AppRoutes.avatarSetup;
       }
 
       // User has a church: normal flow.
+      // Redirect only from bootstrap/auth flow screens into the app shell.
+      // For any valid in-shell location (including /settings), do NOT override it.
       if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
           loc == AppRoutes.register ||
           loc == AppRoutes.server ||
-          loc == AppRoutes.church) {
+          loc == AppRoutes.church ||
+          loc == AppRoutes.avatarSetup) {
         return AppRoutes.tasks;
       }
+
+      // If user is authenticated and has churchId, keep current location.
       return null;
     },
     errorBuilder: (context, state) => Scaffold(
@@ -276,6 +303,12 @@ abstract final class AppRoutes {
   // Profile / side menu entry point
   static const profile = '/profile';
 
+  // Settings
+  static const settings = '/settings';
+  static const settingsEditProfile = '/settings/edit-profile';
+  static const settingsChangePassword = '/settings/change-password';
+  static const settingsChangeEmail = '/settings/change-email';
+
   // Admin
   static const admin = '/admin';
   static const superadmin = '/superadmin';
@@ -283,6 +316,20 @@ abstract final class AppRoutes {
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
+}
+
+class _InDevelopmentScreen extends StatelessWidget {
+  const _InDevelopmentScreen({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: const Center(child: Text('В разработке')),
+    );
+  }
 }
 
 class _ProfileScreenPlaceholder extends ConsumerWidget {
@@ -302,11 +349,11 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
         final roleNorm = roleRaw.toUpperCase();
         final roleLabel = (roleNorm.isEmpty || roleNorm == 'USER') ? '' : roleRaw;
         final avatarUrl = ref.watch(avatarPreviewUrlProvider);
-        final avatarCreated = ref.read(avatarSetupProvider).valueOrNull ?? false;
+        final hasAvatar = user?.hasAvatar ?? false;
         return ListTile(
           leading: InkWell(
             customBorder: const CircleBorder(),
-            onTap: () => context.go(AppRoutes.avatarSetup),
+            onTap: () => context.go(hasAvatar ? AppRoutes.avatar : AppRoutes.avatarSetup),
             child: CircleAvatar(
               radius: 24,
               backgroundColor:
@@ -323,9 +370,9 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
           title: Text(name.isNotEmpty ? name : 'Пользователь'),
           subtitle: Text(roleLabel),
           trailing: const Icon(Icons.chevron_right),
-          // Tap on the tile opens profile (kept behavior), avatar opens setup.
+          // Tap on the tile opens avatar editor if avatar exists, otherwise avatar setup.
           onTap: () => context.go(
-            avatarCreated ? AppRoutes.profile : AppRoutes.avatarSetup,
+            hasAvatar ? AppRoutes.avatar : AppRoutes.avatarSetup,
           ),
         );
       },
@@ -354,6 +401,13 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
           },
           icon: const Icon(Icons.arrow_back),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Настройки',
+            icon: const Icon(Icons.settings),
+            onPressed: () => context.push(AppRoutes.settings),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -365,7 +419,11 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
             leading: const Icon(Icons.face_outlined),
             title: const Text('Аватар'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go(AppRoutes.avatarSetup),
+            onTap: () => context.go(
+              (ref.read(currentUserProvider).valueOrNull?.hasAvatar ?? false)
+                  ? AppRoutes.avatar
+                  : AppRoutes.avatarSetup,
+            ),
           ),
                     ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
@@ -379,7 +437,6 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
             title: const Text('Log out'),
             onTap: () async {
               await ref.read(authTokenProvider.notifier).clearToken();
-              await ref.read(avatarSetupProvider.notifier).clear();
               ref.invalidate(currentUserProvider);
               context.go(AppRoutes.login);
             },
@@ -435,6 +492,7 @@ final class _AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    debugPrint('Shell build location=$location');
     final isAdmin = ref.watch(isAdminProvider);
     final tabs = _tabs(isAdmin: isAdmin);
 

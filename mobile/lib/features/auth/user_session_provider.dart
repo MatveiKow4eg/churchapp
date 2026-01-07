@@ -23,6 +23,7 @@ final userSessionProvider = Provider<UserModel?>((ref) {
     lastName: user.lastName,
     age: user.age,
     city: user.city,
+    email: user.email,
     role: role.isEmpty ? 'USER' : role,
     status: user.status,
     churchId: user.churchId,

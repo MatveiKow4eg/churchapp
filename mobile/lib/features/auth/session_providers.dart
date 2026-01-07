@@ -104,12 +104,22 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
 
 /// A ChangeNotifier proxy to refresh GoRouter when auth/baseUrl changes.
 final routerRefreshNotifierProvider = Provider<_RouterRefreshNotifier>((ref) {
-  // Ensure currentUserProvider stays alive so GoRouter can read it in redirect.
-  ref.watch(currentUserProvider);
-
   final notifier = _RouterRefreshNotifier(ref);
   ref.onDispose(notifier.dispose);
   return notifier;
+});
+
+/// Emits only the routing-relevant session fields.
+///
+/// IMPORTANT: profile edits (firstName/lastName/city) must NOT trigger router
+/// refresh nor router recreation.
+final routerSessionKeyProvider = Provider<String?>((ref) {
+  final token = ref.watch(authTokenProvider).valueOrNull;
+  final user = ref.watch(currentUserProvider).valueOrNull;
+  final churchId = user?.churchId;
+  final role = user?.role.trim().toUpperCase();
+  // token can be null/empty.
+  return '${token ?? ''}|${churchId ?? ''}|${role ?? ''}';
 });
 
 class _RouterRefreshNotifier extends ChangeNotifier {
@@ -122,8 +132,8 @@ class _RouterRefreshNotifier extends ChangeNotifier {
       baseUrlProvider,
       (_, __) => notifyListeners(),
     );
-    _authStateSub = _ref.listen<AsyncValue<UserModel?>>(
-      currentUserProvider,
+    _authStateSub = _ref.listen<String?>(
+      routerSessionKeyProvider,
       (_, __) => notifyListeners(),
     );
   }
@@ -131,7 +141,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
   final Ref _ref;
   late final ProviderSubscription<AsyncValue<String?>> _tokenSub;
   late final ProviderSubscription<AsyncValue<String>> _baseUrlSub;
-  late final ProviderSubscription<AsyncValue<UserModel?>> _authStateSub;
+  late final ProviderSubscription<String?> _authStateSub;
 
   @override
   void dispose() {

@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/user_session_provider.dart';
+import '../auth/session_providers.dart';
 import '../../core/providers/providers.dart';
 import 'dicebear/dicebear_url.dart';
 import 'domain/avatar_options.dart';
@@ -114,7 +114,13 @@ class AvatarOptionsController extends StateNotifier<AvatarOptions> {
 
 final avatarOptionsProvider =
     StateNotifierProvider<AvatarOptionsController, AvatarOptions>((ref) {
-  final user = ref.watch(userSessionProvider);
+  // NOTE: Do not watch full userSessionProvider here.
+  // userSessionProvider changes on profile edits (firstName/lastName), which would
+  // rebuild avatarOptionsProvider and can cascade into app-wide rebuilds.
+  // Avatar seed/config only depends on (id, avatarConfig).
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
+
   final seed = user?.id ?? 'guest';
 
   final ctrl = AvatarOptionsController(AvatarOptions.defaults(seed: seed));

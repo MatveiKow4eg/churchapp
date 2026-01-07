@@ -9,7 +9,7 @@ class App extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(appRouterProvider);
+    final router = ref.read(appRouterProvider);
 
     return MaterialApp.router(
       title: 'App MVP',

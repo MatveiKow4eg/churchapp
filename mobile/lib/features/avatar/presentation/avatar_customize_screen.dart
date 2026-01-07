@@ -4,6 +4,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../../core/providers/providers.dart';
+import '../../auth/models/user_model.dart';
+import '../../auth/session_providers.dart';
 import '../avatar_providers.dart';
 import '../dicebear/schema_utils.dart';
 import 'avatar_preview_urls.dart';
@@ -607,6 +610,61 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
           },
           icon: const Icon(Icons.arrow_back),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+
+                try {
+                  final options = ref.read(avatarOptionsProvider);
+                  final repo = ref.read(authRepositoryProvider);
+
+                  final user = await repo.saveAvatarConfig(options.toQuery());
+
+                  // Preserve profile fields (firstName/lastName/etc.) even if backend
+                  // returns a partial user for /me/avatar.
+                  final prev = ref.read(currentUserProvider).valueOrNull;
+                  final merged = prev == null
+                      ? user
+                      : UserModel(
+                          id: user.id,
+                          firstName: user.firstName.isNotEmpty
+                              ? user.firstName
+                              : prev.firstName,
+                          lastName: user.lastName.isNotEmpty
+                              ? user.lastName
+                              : prev.lastName,
+                          age: user.age != 0 ? user.age : prev.age,
+                          city: user.city.isNotEmpty ? user.city : prev.city,
+                          email: user.email.isNotEmpty ? user.email : prev.email,
+                          role: user.role.isNotEmpty ? user.role : prev.role,
+                          status: user.status.isNotEmpty ? user.status : prev.status,
+                          churchId: user.churchId ?? prev.churchId,
+                          avatarConfig: user.avatarConfig,
+                          avatarUpdatedAt: user.avatarUpdatedAt,
+                        );
+
+                  // Update in-memory user session so router/guards react immediately.
+                  ref.read(currentUserProvider.notifier).setUser(merged);
+
+                  // Force preview images to refetch.
+                  ref.read(avatarPreviewBustProvider.notifier).state++;
+
+                  if (context.mounted) {
+                    context.go(AppRoutes.profile);
+                  }
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Не удалось сохранить: $e')),
+                  );
+                }
+              },
+              child: const Text('Сохранить'),
+            ),
+          ),
+        ],
       ),
       body: schemaAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

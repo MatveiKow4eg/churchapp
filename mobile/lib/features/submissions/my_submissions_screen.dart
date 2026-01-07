@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
+import '../avatar/avatar_providers.dart';
+import '../avatar/presentation/avatar_thumb_image.dart';
 import '../../core/errors/app_error.dart';
 import 'my_submissions_providers.dart';
 
@@ -195,7 +197,14 @@ class MySubmissionsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Мои заявки')),
+      appBar: AppBar(
+        title: const Text('Мои заявки'),
+        leading: IconButton(
+          tooltip: 'Профиль',
+          onPressed: () => context.go(AppRoutes.profile),
+          icon: _AvatarLeading(),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -206,6 +215,25 @@ class MySubmissionsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Expanded(child: body),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AvatarLeading extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final url = ref.watch(avatarPreviewUrlProvider);
+
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: ClipOval(
+        child: AvatarThumbImage(
+          url: url,
+          fit: BoxFit.cover,
+          cacheWidth: 64,
         ),
       ),
     );

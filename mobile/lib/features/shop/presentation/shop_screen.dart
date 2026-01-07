@@ -87,6 +87,17 @@ class ShopScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Магазин'),
+        leading: IconButton(
+          tooltip: 'Назад',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.profile);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
       ),
       body: Column(
         children: [

@@ -14,6 +14,7 @@ const { meRouter } = require('./routes/meRoutes');
 const { statsRouter } = require('./routes/statsRoutes');
 const { leaderboardRouter } = require('./routes/leaderboardRoutes');
 const { adminRouter } = require('./routes/adminRoutes');
+const avatarRoutes = require('./routes/avatarRoutes');
 
 const app = express();
 
@@ -77,6 +78,10 @@ app.use('/leaderboard', leaderboardRouter);
 
 // Mount admin routes
 app.use('/admin', adminRouter);
+
+// Mount avatar proxy routes
+app.use(avatarRoutes);
+console.log('avatar routes mounted');
 
 // 404 fallback
 app.use((req, res) => {

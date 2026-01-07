@@ -23,6 +23,8 @@ import '../features/stats/presentation/stats_screen.dart';
 import '../features/submissions/my_submissions_screen.dart';
 import '../features/tasks/presentation/task_details_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
+import '../features/avatar/avatar_providers.dart';
+import '../features/avatar/presentation/avatar_thumb_image.dart';
 import '../features/avatar/presentation/avatar_customize_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -94,6 +96,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.avatar,
             builder: (context, state) => const AvatarCustomizeScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.profile,
+            builder: (context, state) => const _ProfileScreenPlaceholder(),
           ),
           // Admin inside shell so bottom navigation stays visible.
           GoRoute(
@@ -247,6 +253,9 @@ abstract final class AppRoutes {
   static const submissionsMine = '/submissions/mine';
   static const avatar = '/avatar';
 
+  // Profile / side menu entry point
+  static const profile = '/profile';
+
   // Admin
   static const admin = '/admin';
   static const superadmin = '/superadmin';
@@ -254,6 +263,108 @@ abstract final class AppRoutes {
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
+}
+
+class _ProfileScreenPlaceholder extends ConsumerWidget {
+  const _ProfileScreenPlaceholder();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userAsync = ref.watch(currentUserProvider);
+
+    Widget header;
+    header = userAsync.when(
+      data: (user) {
+        final firstName = (user?.firstName ?? '').trim();
+        final lastName = (user?.lastName ?? '').trim();
+        final name = ('$firstName $lastName').trim();
+        final role = (user?.role ?? '').trim();
+        final avatarUrl = ref.watch(avatarPreviewUrlProvider);
+        return ListTile(
+          leading: CircleAvatar(
+            radius: 24,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ClipOval(
+              child: AvatarThumbImage(
+                url: avatarUrl,
+                fit: BoxFit.cover,
+                cacheWidth: 96,
+              ),
+            ),
+          ),
+          title: Text(name.isNotEmpty ? name : 'Пользователь'),
+          subtitle: Text(role.isNotEmpty ? role : ''),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.go(AppRoutes.avatar),
+        );
+      },
+      loading: () => const ListTile(
+        leading: CircleAvatar(radius: 24, child: Icon(Icons.person)),
+        title: Text('Загрузка...'),
+      ),
+      error: (e, _) => ListTile(
+        leading: const CircleAvatar(radius: 24, child: Icon(Icons.person)),
+        title: const Text('Профиль'),
+        subtitle: Text(e.toString()),
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Профиль'),
+        leading: IconButton(
+          tooltip: 'Назад',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.tasks);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        children: [
+          header,
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.face_outlined),
+            title: const Text('Аватар'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(AppRoutes.avatar),
+          ),
+                    ListTile(
+            leading: const Icon(Icons.bar_chart_outlined),
+            title: const Text('Статистика'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(AppRoutes.stats),
+          ),
+          const Divider(height: 24),
+          ListTile(
+            leading: const Icon(Icons.account_tree_outlined),
+            title: const Text('Сменить церковь'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(AppRoutes.church),
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final isAdmin = ref.watch(isAdminProvider);
+              if (!isAdmin) return const SizedBox.shrink();
+              return ListTile(
+                leading: const Icon(Icons.admin_panel_settings_outlined),
+                title: const Text('Админ-панель'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go(AppRoutes.admin),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 final class _AppShell extends ConsumerWidget {
@@ -267,16 +378,12 @@ final class _AppShell extends ConsumerWidget {
 
   List<String> _tabs({required bool isAdmin}) {
     // Order matters: index in this list == NavigationBar index.
-    final tabs = <String>[
+    // Bottom navigation must have only two tabs: Tasks and My Submissions.
+    // Admin stays reachable via routes, but not as a bottom tab.
+    return const <String>[
       AppRoutes.tasks,
-      AppRoutes.shop,
-      AppRoutes.inventory,
-      AppRoutes.stats,
       AppRoutes.submissionsMine,
-      AppRoutes.avatar,
     ];
-    if (isAdmin) tabs.add(AppRoutes.admin);
-    return tabs;
   }
 
   int _indexFromLocation(String loc, {required List<String> tabs}) {
@@ -302,53 +409,36 @@ final class _AppShell extends ConsumerWidget {
       const NavigationDestination(
         icon: Icon(Icons.checklist_outlined),
         selectedIcon: Icon(Icons.checklist),
-        label: '',
-      ),
-      const NavigationDestination(
-        icon: Icon(Icons.storefront_outlined),
-        selectedIcon: Icon(Icons.storefront),
-        label: '',
-      ),
-      const NavigationDestination(
-        icon: Icon(Icons.inventory_2_outlined),
-        selectedIcon: Icon(Icons.inventory_2),
-        label: '',
-      ),
-      const NavigationDestination(
-        icon: Icon(Icons.bar_chart_outlined),
-        selectedIcon: Icon(Icons.bar_chart),
-        label: '',
+        label: 'Задания',
       ),
       const NavigationDestination(
         icon: Icon(Icons.inbox_outlined),
         selectedIcon: Icon(Icons.inbox),
-        label: '',
+        label: 'Мои заявки',
       ),
-      const NavigationDestination(
-        icon: Icon(Icons.face_outlined),
-        selectedIcon: Icon(Icons.face),
-        label: '',
-      ),
-      if (isAdmin)
-        const NavigationDestination(
-          icon: Icon(Icons.admin_panel_settings_outlined),
-          selectedIcon: Icon(Icons.admin_panel_settings),
-          label: '',
-        ),
     ];
+
+    final hideBottomBar = location.startsWith(AppRoutes.profile) ||
+        location.startsWith(AppRoutes.avatar) ||
+        location.startsWith(AppRoutes.shop) ||
+        location.startsWith(AppRoutes.inventory) ||
+        location.startsWith(AppRoutes.stats) ||
+        location.startsWith(AppRoutes.church);
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-        onDestinationSelected: (idx) {
-          final target = _locationFromIndex(idx, tabs: tabs);
-          if (target == location) return;
-          context.go(target);
-        },
-        destinations: destinations,
-      ),
+      bottomNavigationBar: hideBottomBar
+          ? null
+          : NavigationBar(
+              selectedIndex: currentIndex,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              onDestinationSelected: (idx) {
+                final target = _locationFromIndex(idx, tabs: tabs);
+                if (target == location) return;
+                context.go(target);
+              },
+              destinations: destinations,
+            ),
     );
   }
 }

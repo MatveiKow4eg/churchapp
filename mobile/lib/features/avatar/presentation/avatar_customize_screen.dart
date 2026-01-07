@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../avatar_providers.dart';
 import '../dicebear/schema_utils.dart';
 import 'avatar_preview_urls.dart';
@@ -594,6 +596,17 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Avatar'),
+        leading: IconButton(
+          tooltip: 'Назад',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.profile);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
       ),
       body: schemaAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

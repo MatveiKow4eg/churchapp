@@ -173,7 +173,20 @@ class _ChurchSelectScreenState extends ConsumerState<ChurchSelectScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Выбор церкви')),
+      appBar: AppBar(
+        title: const Text('Выбор церкви'),
+        leading: IconButton(
+          tooltip: 'Назад',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.profile);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

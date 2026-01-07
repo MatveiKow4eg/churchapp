@@ -116,14 +116,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                 ],
               ),
+              // Superadmin panel under /admin so it stays inside the shell.
+              GoRoute(
+                path: 'superadmin',
+                builder: (context, state) => const SuperAdminPanelScreen(),
+              ),
             ],
           ),
         ],
       ),
-      GoRoute(
-        path: AppRoutes.superadmin,
-        builder: (context, state) => const SuperAdminPanelScreen(),
-      ),
+      // NOTE: Superadmin screen moved under /admin/superadmin to keep bottom navigation.
       GoRoute(
         path: AppRoutes.forbidden,
         builder: (context, state) => const NoAccessScreen(),
@@ -158,18 +160,52 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final user = userAsync.valueOrNull;
 
       // If token is missing OR session resolved as unauthenticated -> /login.
+      // Keep /register reachable from /login.
       if (token == null || token.isEmpty || user == null) {
+        if (loc == AppRoutes.register) return null;
         return loc == AppRoutes.login ? null : AppRoutes.login;
       }
 
       // 4) User is present: route by church flow
-      final churchId = user.churchId;
-      if (churchId == null) {
-        return loc == AppRoutes.church ? null : AppRoutes.church;
+      // Make routing decision based on role FIRST.
+
+      // SUPERADMIN: allow /superadmin even without church.
+      // IMPORTANT: do NOT redirect superadmin to /tasks from /superadmin,
+      // otherwise they get kicked back into tasks where API returns NO_CHURCH.
+      final role = user.role.trim().toUpperCase();
+      if (role == 'SUPERADMIN') {
+        if (loc == AppRoutes.superadmin) return null;
+
+        final isInShell = loc.startsWith(AppRoutes.tasks) ||
+            loc.startsWith(AppRoutes.shop) ||
+            loc.startsWith(AppRoutes.inventory) ||
+            loc.startsWith(AppRoutes.stats) ||
+            loc.startsWith(AppRoutes.submissionsMine) ||
+            loc.startsWith(AppRoutes.admin);
+
+        // If they are in any bootstrap/auth screens, jump into the shell.
+        if (!isInShell &&
+            (loc == AppRoutes.splash ||
+                loc == AppRoutes.login ||
+                loc == AppRoutes.register ||
+                loc == AppRoutes.server ||
+                loc == AppRoutes.church)) {
+          return AppRoutes.tasks;
+        }
+
+        // No other redirects for superadmin.
+        return null;
       }
 
-      // User is fully allowed. Do not force redirect on every navigation.
-      // Only send to /tasks from bootstrap/auth flow locations.
+      // NON-superadmin: must pick a church before entering the shell.
+      final churchId = user.churchId;
+      if (churchId == null) {
+        // Allow SUPERADMIN/SUPERADMIN to access superadmin area without church.
+        // Everyone else must pick a church.
+        return AppRoutes.church;
+      }
+
+      // User has a church: normal flow.
       if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
           loc == AppRoutes.register ||

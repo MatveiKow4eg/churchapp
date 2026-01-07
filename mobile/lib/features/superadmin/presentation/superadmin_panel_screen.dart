@@ -25,8 +25,8 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final role = ref.watch(userRoleProvider);
-    if (role != 'SUPERADMIN') {
+    final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
+    if (role != 'SUPERADMIN' && role != 'SUPERADMIN') {
       // Hard guard: do not render this screen for non-superadmin.
       return Scaffold(
         appBar: AppBar(title: const Text('No access')),
@@ -37,6 +37,8 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
     }
 
     final churchesAsync = ref.watch(superadminChurchesProvider);
+    final createState = ref.watch(superadminCreateChurchProvider);
+    final isCreating = createState.isLoading;
 
     return Scaffold(
       appBar: AppBar(title: const Text('SuperAdmin Panel')),
@@ -69,39 +71,60 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
             Row(
               children: [
                 ElevatedButton(
-                  onPressed: () async {
-                    final name = _nameCtrl.text.trim();
-                    final city = _cityCtrl.text.trim();
+                  onPressed: isCreating
+                      ? null
+                      : () async {
+                          final name = _nameCtrl.text.trim();
+                          final city = _cityCtrl.text.trim();
 
-                    if (name.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Name is required')),
-                      );
-                      return;
-                    }
+                          if (name.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Name is required')),
+                            );
+                            return;
+                          }
 
-                    final ok = await ref
-                        .read(superadminCreateChurchProvider.notifier)
-                        .createChurch(
-                          name: name,
-                          city: city.isEmpty ? null : city,
-                        );
+                          final ok = await ref
+                              .read(superadminCreateChurchProvider.notifier)
+                              .createChurch(
+                                name: name,
+                                city: city.isEmpty ? null : city,
+                              );
 
-                    if (!mounted) return;
-                    if (ok) {
-                      _nameCtrl.clear();
-                      _cityCtrl.clear();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Church created')),
-                      );
-                      ref.invalidate(superadminChurchesProvider);
-                    }
-                  },
-                  child: const Text('Create'),
+                          if (!mounted) return;
+                          if (ok) {
+                            _nameCtrl.clear();
+                            _cityCtrl.clear();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Church created')),
+                            );
+                            ref.invalidate(superadminChurchesProvider);
+                          } else {
+                            final err = createState.error;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  err == null
+                                      ? 'Failed to create church'
+                                      : 'Failed to create church: $err',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                  child: isCreating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Create'),
                 ),
                 const SizedBox(width: 12),
                 OutlinedButton(
-                  onPressed: () => ref.invalidate(superadminChurchesProvider),
+                  onPressed: isCreating
+                      ? null
+                      : () => ref.invalidate(superadminChurchesProvider),
                   child: const Text('Refresh'),
                 ),
               ],

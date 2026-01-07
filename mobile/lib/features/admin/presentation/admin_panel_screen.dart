@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
+import '../../auth/user_session_provider.dart';
 
-class AdminPanelScreen extends StatelessWidget {
+class AdminPanelScreen extends ConsumerWidget {
   const AdminPanelScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
+    final isSuperadmin = role == 'SUPERADMIN' || role == 'SUPERADMIN';
+
     return Scaffold(
       appBar: AppBar(title: const Text('Админ-панель')),
       body: ListView(
@@ -43,6 +48,16 @@ class AdminPanelScreen extends StatelessWidget {
             enabled: false,
             trailing: const Text('Скоро'),
           ),
+          if (isSuperadmin) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.admin_panel_settings_outlined),
+              title: const Text('SuperAdmin: церкви'),
+              subtitle: const Text('Создание и список церквей'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('${AppRoutes.admin}/superadmin'),
+            ),
+          ],
         ],
       ),
     );

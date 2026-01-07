@@ -36,10 +36,11 @@ final userSessionProvider = Provider<UserModel?>((ref) {
 /// a user as authenticated when AsyncValue has non-null data.
 final userRoleProvider = Provider<String?>((ref) {
   final userAsync = ref.watch(currentUserProvider);
-  return userAsync.valueOrNull?.role;
+  final role = userAsync.valueOrNull?.role;
+  return role?.trim().toUpperCase();
 });
 
 final isAdminProvider = Provider<bool>((ref) {
   final role = ref.watch(userRoleProvider);
-  return role == 'ADMIN' || role == 'SUPERADMIN';
+  return role == 'ADMIN' || role == 'SUPERADMIN' || role == 'SUPERADMIN';
 });

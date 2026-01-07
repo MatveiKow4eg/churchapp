@@ -5,8 +5,7 @@
     "rarity": "COMMON",
     "price": 100,
     "name": { "ru": "Кепка красная", "en": "Red baseball cap" },
-    "iconPath": "assets/items/hats/placeholder.png",
-    "layerPath": "assets/avatar/layers/hats/hat_baseball_red.png"
+    "iconPath": "assets/items/hats/placeholder.png"
   },
   {
     "key": "hat_beanie_black",
@@ -14,8 +13,7 @@
     "rarity": "COMMON",
     "price": 120,
     "name": { "ru": "Шапка чёрная", "en": "Black beanie" },
-    "iconPath": "assets/items/hats/placeholder.png",
-    "layerPath": "assets/avatar/layers/hats/hat_beanie_black.png"
+    "iconPath": "assets/items/hats/placeholder.png"
   },
   {
     "key": "top_hoodie_blue",
@@ -23,8 +21,7 @@
     "rarity": "RARE",
     "price": 250,
     "name": { "ru": "Худи синее", "en": "Blue hoodie" },
-    "iconPath": "assets/items/tops/placeholder.png",
-    "layerPath": "assets/avatar/layers/tops/top_hoodie_blue.png"
+    "iconPath": "assets/items/tops/placeholder.png"
   },
   {
     "key": "top_tshirt_white",
@@ -32,8 +29,7 @@
     "rarity": "COMMON",
     "price": 150,
     "name": { "ru": "Футболка белая", "en": "White t-shirt" },
-    "iconPath": "assets/items/tops/placeholder.png",
-    "layerPath": "assets/avatar/layers/tops/top_tshirt_white.png"
+    "iconPath": "assets/items/tops/placeholder.png"
   },
   {
     "key": "bottom_jeans_dark",
@@ -41,8 +37,7 @@
     "rarity": "COMMON",
     "price": 180,
     "name": { "ru": "Джинсы тёмные", "en": "Dark jeans" },
-    "iconPath": "assets/items/bottoms/placeholder.png",
-    "layerPath": "assets/avatar/layers/bottoms/bottom_jeans_dark.png"
+    "iconPath": "assets/items/bottoms/placeholder.png"
   },
   {
     "key": "bottom_skirt_green",
@@ -50,8 +45,7 @@
     "rarity": "RARE",
     "price": 220,
     "name": { "ru": "Юбка зелёная", "en": "Green skirt" },
-    "iconPath": "assets/items/bottoms/placeholder.png",
-    "layerPath": "assets/avatar/layers/bottoms/bottom_skirt_green.png"
+    "iconPath": "assets/items/bottoms/placeholder.png"
   },
   {
     "key": "shoes_sneakers_white",
@@ -59,8 +53,7 @@
     "rarity": "COMMON",
     "price": 200,
     "name": { "ru": "Кроссовки белые", "en": "White sneakers" },
-    "iconPath": "assets/items/shoes/placeholder.png",
-    "layerPath": "assets/avatar/layers/shoes/shoes_sneakers_white.png"
+    "iconPath": "assets/items/shoes/placeholder.png"
   },
   {
     "key": "shoes_boots_brown",
@@ -68,8 +61,7 @@
     "rarity": "EPIC",
     "price": 450,
     "name": { "ru": "Ботинки коричневые", "en": "Brown boots" },
-    "iconPath": "assets/items/shoes/placeholder.png",
-    "layerPath": "assets/avatar/layers/shoes/shoes_boots_brown.png"
+    "iconPath": "assets/items/shoes/placeholder.png"
   },
   {
     "key": "acc_glasses_round",
@@ -77,8 +69,7 @@
     "rarity": "RARE",
     "price": 300,
     "name": { "ru": "Очки круглые", "en": "Round glasses" },
-    "iconPath": "assets/items/accessories/placeholder.png",
-    "layerPath": "assets/avatar/layers/accessories/acc_glasses_round.png"
+    "iconPath": "assets/items/accessories/placeholder.png"
   },
   {
     "key": "acc_necklace_cross",
@@ -86,7 +77,6 @@
     "rarity": "EPIC",
     "price": 500,
     "name": { "ru": "Крестик", "en": "Cross necklace" },
-    "iconPath": "assets/items/accessories/placeholder.png",
-    "layerPath": "assets/avatar/layers/accessories/acc_necklace_cross.png"
+    "iconPath": "assets/items/accessories/placeholder.png"
   }
 ]

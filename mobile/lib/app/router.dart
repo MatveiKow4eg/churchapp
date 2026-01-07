@@ -23,6 +23,7 @@ import '../features/stats/presentation/stats_screen.dart';
 import '../features/submissions/my_submissions_screen.dart';
 import '../features/tasks/presentation/task_details_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
+import '../features/avatar/presentation/avatar_customize_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final refreshListenable = ref.watch(routerRefreshNotifierProvider);
@@ -89,6 +90,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.submissionsMine,
             builder: (context, state) => const MySubmissionsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.avatar,
+            builder: (context, state) => const AvatarCustomizeScreen(),
           ),
           // Admin inside shell so bottom navigation stays visible.
           GoRoute(
@@ -181,6 +186,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             loc.startsWith(AppRoutes.inventory) ||
             loc.startsWith(AppRoutes.stats) ||
             loc.startsWith(AppRoutes.submissionsMine) ||
+            loc.startsWith(AppRoutes.avatar) ||
             loc.startsWith(AppRoutes.admin);
 
         // If they are in any bootstrap/auth screens, jump into the shell.
@@ -239,6 +245,7 @@ abstract final class AppRoutes {
   static const inventory = '/inventory';
   static const stats = '/stats';
   static const submissionsMine = '/submissions/mine';
+  static const avatar = '/avatar';
 
   // Admin
   static const admin = '/admin';
@@ -266,6 +273,7 @@ final class _AppShell extends ConsumerWidget {
       AppRoutes.inventory,
       AppRoutes.stats,
       AppRoutes.submissionsMine,
+      AppRoutes.avatar,
     ];
     if (isAdmin) tabs.add(AppRoutes.admin);
     return tabs;
@@ -314,6 +322,11 @@ final class _AppShell extends ConsumerWidget {
       const NavigationDestination(
         icon: Icon(Icons.inbox_outlined),
         selectedIcon: Icon(Icons.inbox),
+        label: '',
+      ),
+      const NavigationDestination(
+        icon: Icon(Icons.face_outlined),
+        selectedIcon: Icon(Icons.face),
         label: '',
       ),
       if (isAdmin)

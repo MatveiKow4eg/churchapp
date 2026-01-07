@@ -14,9 +14,12 @@ class MySubmissionsScreen extends ConsumerWidget {
     final filter = ref.watch(mySubmissionsFilterProvider);
     final async = ref.watch(mySubmissionsListProvider);
 
-    Widget chips = Wrap(
-      spacing: 8,
-      children: [
+    // Filters can overflow horizontally in landscape; use a horizontal scroller.
+    Widget chips = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
         ChoiceChip(
           label: const Text('Все'),
           selected: filter == MySubmissionsFilter.all,
@@ -53,7 +56,14 @@ class MySubmissionsScreen extends ConsumerWidget {
             ref.invalidate(mySubmissionsListProvider);
           },
         ),
-      ],
+      ].expand((w) sync* {
+        // Add spacing between chips.
+        yield Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: w,
+        );
+      }).toList(growable: false),
+    ),
     );
 
     Future<void> onRefresh() async {

@@ -84,9 +84,6 @@ model User {
   ledgerEntries PointsLedger[]
   inventory     Inventory[]
 
-  avatarConfig    Json?
-  avatarUpdatedAt DateTime?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

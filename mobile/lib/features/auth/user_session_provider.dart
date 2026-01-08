@@ -44,6 +44,6 @@ final userRoleProvider = Provider<String?>((ref) {
 });
 
 final isAdminProvider = Provider<bool>((ref) {
-  final role = ref.watch(userRoleProvider);
-  return role == 'ADMIN' || role == 'SUPERADMIN' || role == 'SUPERADMIN';
+  final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
+  return role == 'ADMIN' || role == 'SUPERADMIN';
 });

@@ -51,8 +51,12 @@ async function login(req, res, next) {
   try {
     const { email, password } = req.body;
 
+    // Normalize email to avoid accidental login into a different account
+    // that differs only by letter case.
+    const normalizedEmail = (email ?? '').trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       select: {
         id: true,
         role: true,
@@ -81,7 +85,17 @@ async function login(req, res, next) {
       role: user.role
     });
 
-    return res.json({ token });
+    // Helpful for debugging role/token mismatches on client.
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        email: normalizedEmail,
+        role: user.role,
+        churchId: user.churchId,
+        status: user.status
+      }
+    });
   } catch (err) {
     return next(err);
   }

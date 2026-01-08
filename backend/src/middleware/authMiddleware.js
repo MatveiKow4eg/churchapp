@@ -16,7 +16,7 @@ function mapJwtErrorCode(code) {
   return 'UNAUTHORIZED';
 }
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   try {
     const header = req.headers['authorization'] || '';
     const [scheme, token] = header.split(' ');
@@ -52,10 +52,28 @@ function requireAuth(req, res, next) {
     );
 
     // payload: { sub, userId, role, churchId }
+    // IMPORTANT: do NOT trust role from JWT blindly. It can be stale if user role
+    // was updated after token issuance. Always resolve role from DB.
+    const userId = payload.sub ?? payload.userId;
+
+    const { prisma } = require('../db/prisma');
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, churchId: true, status: true }
+    });
+
+    if (!dbUser) {
+      throw new HttpError(401, 'UNAUTHORIZED', 'User not found');
+    }
+
+    if (dbUser.status === 'BANNED') {
+      throw new HttpError(403, 'FORBIDDEN', 'User is banned');
+    }
+
     req.user = {
-      id: payload.sub ?? payload.userId,
-      role: payload.role,
-      churchId: payload.churchId ?? null
+      id: dbUser.id,
+      role: dbUser.role,
+      churchId: dbUser.churchId ?? null
     };
 
     return next();

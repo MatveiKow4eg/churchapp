@@ -39,24 +39,51 @@ async function createSubmission({ userId, taskId, commentUser }) {
     throw new HttpError(409, 'TASK_INACTIVE', 'Task is not active');
   }
 
-  // 3) запрет дублей (userId, taskId)
-  const existing = await prisma.submission.findUnique({
-    where: { userId_taskId: { userId, taskId } },
-    select: { id: true }
-  });
-
-  if (existing) {
-    throw new HttpError(409, 'SUBMISSION_ALREADY_EXISTS', 'Submission for this task already exists');
-  }
-
-  return prisma.submission.create({
-    data: {
-      churchId: user.churchId,
+  // 3) запрет дублей: нельзя иметь несколько "активных" сабмитов на одно задание.
+  // Разрешаем повторную отправку после REJECTED (админ отклонил) — пользователь может попытаться снова.
+  // После APPROVED повторная отправка запрещена.
+  const existingActive = await prisma.submission.findFirst({
+    where: {
       userId,
       taskId,
-      commentUser
-    }
+      status: { in: ['PENDING', 'APPROVED'] }
+    },
+    select: { id: true, status: true },
+    orderBy: { createdAt: 'desc' }
   });
+
+  if (existingActive) {
+    if (existingActive.status === 'PENDING') {
+      throw new HttpError(409, 'ALREADY_PENDING', 'Submission for this task is already pending');
+    }
+    if (existingActive.status === 'APPROVED') {
+      throw new HttpError(409, 'ALREADY_APPROVED', 'Task already approved');
+    }
+
+    // Defensive fallback
+    throw new HttpError(409, 'CONFLICT', 'Conflict');
+  }
+
+  try {
+    return await prisma.submission.create({
+      data: {
+        churchId: user.churchId,
+        userId,
+        taskId,
+        commentUser
+      }
+    });
+  } catch (e) {
+    // Defensive mapping for any remaining uniqueness / race conditions
+    // Prisma unique violation: P2002
+    if (e && e.code === 'P2002') {
+      throw new HttpError(409, 'CONFLICT', 'Conflict', {
+        prismaCode: e.code,
+        target: e.meta?.target
+      });
+    }
+    throw e;
+  }
 }
 
 async function listMySubmissions(

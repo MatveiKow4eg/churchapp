@@ -150,7 +150,8 @@ model Submission {
   @@index([userId])
   @@index([status])
 
-  @@unique([userId, taskId])
+  // allow multiple attempts per (userId, taskId)
+  @@index([userId, taskId, createdAt])
 }
 
 model PointsLedger {

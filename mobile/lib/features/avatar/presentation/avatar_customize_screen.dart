@@ -602,11 +602,23 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
         leading: IconButton(
           tooltip: 'Назад',
           onPressed: () {
+            // /avatar/setup is an onboarding hard-gate: there is nowhere "back" to go.
+            // Keep button responsive by giving a consistent deterministic destination.
+            final loc = GoRouterState.of(context).matchedLocation;
+
             if (context.canPop()) {
               context.pop();
-            } else {
-              context.go(AppRoutes.profile);
+              return;
             }
+
+            // If we are in setup -> send to church (previous onboarding step).
+            if (loc == AppRoutes.avatarSetup) {
+              context.go(AppRoutes.church);
+              return;
+            }
+
+            // Otherwise (editing avatar from inside the app), go back to profile.
+            context.go(AppRoutes.profile);
           },
           icon: const Icon(Icons.arrow_back),
         ),
@@ -652,7 +664,14 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
                   // Force preview images to refetch.
                   ref.read(avatarPreviewBustProvider.notifier).state++;
 
-                  if (context.mounted) {
+                  if (!context.mounted) return;
+
+                  // If user came from onboarding (/avatar/setup) -> send to tasks.
+                  // If user edited avatar from within the app (/avatar) -> return to profile/settings flow.
+                  final loc = GoRouterState.of(context).matchedLocation;
+                  if (loc == AppRoutes.avatarSetup) {
+                    context.go(AppRoutes.tasks);
+                  } else {
                     context.go(AppRoutes.profile);
                   }
                 } catch (e) {

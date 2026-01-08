@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../auth/user_session_provider.dart';
+import '../../auth/session_providers.dart';
+import '../../../core/theme/theme_controller.dart';
 import '../settings_controller.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -57,22 +59,7 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _SectionHeader(title: 'Тема'),
           const SizedBox(height: 8),
-          const _DisabledOption(
-            title: 'Темная тема',
-            subtitle: '(в разработке)',
-          ),
-          const _DisabledOption(
-            title: 'Светлая',
-            subtitle: '(в разработке)',
-          ),
-          const _DisabledOption(
-            title: 'Системная',
-            subtitle: '(в разработке)',
-          ),
-          const _DisabledOption(
-            title: 'Акцентный цвет',
-            subtitle: '(опционально, в разработке)',
-          ),
+          _ThemeSection(),
           const SizedBox(height: 24),
           _SectionHeader(title: 'Церковь'),
           const SizedBox(height: 8),
@@ -80,12 +67,6 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.church_outlined),
             title: const Text('Текущая церковь'),
             subtitle: Text(churchLabel),
-          ),
-          ListTile(
-            leading: const Icon(Icons.swap_horiz),
-            title: const Text('Сменить церковь'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.go(AppRoutes.church),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
@@ -137,10 +118,14 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 final _currentChurchNameProvider = Provider<String>((ref) {
-  // /auth/me may return church, but currentUserProvider stores only user for now.
-  // Showing "..." when churchId exists keeps UI consistent without extra API.
-  final user = ref.watch(userSessionProvider);
+  // /auth/me кэшируется в currentUserProvider.
+  // В мобильной модели UserModel сейчас нет поля `church`, есть только `churchId`.
+  // Поэтому показываем "Не выбрано" или placeholder.
+  final user = ref.watch(currentUserProvider).valueOrNull;
+
   if (user?.churchId == null) return 'Не выбрано';
+
+  // Если позже добавим в UserModel поле churchName (или church), можно заменить.
   return '...';
 });
 
@@ -160,19 +145,109 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _DisabledOption extends StatelessWidget {
-  const _DisabledOption({required this.title, required this.subtitle});
+class _ThemeSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeState = ref.watch(themeControllerProvider);
 
-  final String title;
-  final String subtitle;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RadioListTile<AppThemeMode>(
+          value: AppThemeMode.system,
+          groupValue: themeState.mode,
+          onChanged: (v) {
+            if (v == null) return;
+            ref.read(themeControllerProvider.notifier).setThemeMode(v);
+          },
+          title: const Text('Системная'),
+        ),
+        RadioListTile<AppThemeMode>(
+          value: AppThemeMode.dark,
+          groupValue: themeState.mode,
+          onChanged: (v) {
+            if (v == null) return;
+            ref.read(themeControllerProvider.notifier).setThemeMode(v);
+          },
+          title: const Text('Тёмная'),
+        ),
+        RadioListTile<AppThemeMode>(
+          value: AppThemeMode.light,
+          groupValue: themeState.mode,
+          onChanged: (v) {
+            if (v == null) return;
+            ref.read(themeControllerProvider.notifier).setThemeMode(v);
+          },
+          title: const Text('Светлая'),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Акцентный цвет (опционально)',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 8),
+        _AccentColorPicker(
+          selected: themeState.accentColor,
+          onSelect: (c) =>
+              ref.read(themeControllerProvider.notifier).setAccentColor(c),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccentColorPicker extends StatelessWidget {
+  const _AccentColorPicker({
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final Color selected;
+  final ValueChanged<Color> onSelect;
+
+  static const _options = <Color>[
+    Colors.yellow,
+    Colors.blue,
+    Colors.green,
+    Colors.purple,
+    Colors.red,
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      enabled: false,
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.lock_outline),
+    final borderColor = Theme.of(context).colorScheme.primary;
+
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _options.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final color = _options[index];
+          final isSelected = color.value == selected.value;
+
+          return InkWell(
+            onTap: () => onSelect(color),
+            customBorder: const CircleBorder(),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: isSelected
+                    ? Border.all(color: borderColor, width: 2)
+                    : null,
+              ),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: color,
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

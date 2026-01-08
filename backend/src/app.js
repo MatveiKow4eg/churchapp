@@ -16,6 +16,9 @@ const { leaderboardRouter } = require('./routes/leaderboardRoutes');
 const { adminRouter } = require('./routes/adminRoutes');
 const avatarRoutes = require('./routes/avatarRoutes');
 
+// bible router (public)
+const { bibleRouter } = require('./routes/bibleRoutes');
+
 const app = express();
 
 // Body parsing
@@ -54,6 +57,9 @@ app.get(
 
 // Mount auth routes
 app.use('/auth', authRouter);
+
+// Mount bible proxy routes (public, no auth)
+app.use('/bible', bibleRouter);
 
 // Mount churches routes
 app.use('/churches', churchRouter);

@@ -32,6 +32,9 @@ import '../features/profile/presentation/settings_screen.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/change_password_screen.dart';
 import '../features/profile/presentation/change_email_screen.dart';
+import '../features/bible/presentation/bible_books_screen.dart';
+import '../features/bible/presentation/bible_chapter_screen.dart';
+import '../features/bible/presentation/bible_search_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   debugPrint('appRouterProvider created');
@@ -68,7 +71,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.avatarSetup,
-        builder: (context, state) => const AvatarSetupScreen(),
+        builder: (context, state) => const AvatarCustomizeScreen(),
       ),
 
       // App shell (bottom navigation)
@@ -171,6 +174,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.forbidden,
         builder: (context, state) => const NoAccessScreen(),
       ),
+      GoRoute(
+        path: AppRoutes.bible,
+        builder: (context, state) => const BibleBooksScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.bibleSearch,
+        builder: (context, state) {
+          String? initialBookId;
+          String? initialBookName;
+
+          final extra = state.extra;
+          if (extra is Map) {
+            final idAny = extra['initialBookId'];
+            final nameAny = extra['initialBookName'];
+            if (idAny is String && idAny.trim().isNotEmpty) {
+              initialBookId = idAny.trim();
+            }
+            if (nameAny is String && nameAny.trim().isNotEmpty) {
+              initialBookName = nameAny.trim();
+            }
+          }
+
+          return BibleSearchScreen(
+            initialBookId: initialBookId,
+            initialBookName: initialBookName,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.bibleChapter,
+        builder: (context, state) {
+          final bookId = state.pathParameters['bookId']!;
+          final chapter = int.parse(state.pathParameters['chapter']!);
+
+          String bookName = bookId;
+          int? maxChapters;
+
+          final extra = state.extra;
+          if (extra is Map) {
+            final nameAny = extra['bookName'];
+            if (nameAny is String && nameAny.trim().isNotEmpty) {
+              bookName = nameAny;
+            }
+            final maxAny = extra['maxChapters'];
+            if (maxAny is int) {
+              maxChapters = maxAny;
+            } else if (maxAny is String) {
+              maxChapters = int.tryParse(maxAny);
+            }
+          }
+
+          int? highlightVerse;
+          String? highlightQuery;
+          final extraHv = state.extra;
+          if (extraHv is Map) {
+            final hvAny = extraHv['highlightVerse'];
+            if (hvAny is int) {
+              highlightVerse = hvAny;
+            } else if (hvAny is String) {
+              highlightVerse = int.tryParse(hvAny);
+            }
+
+            final hqAny = extraHv['highlightQuery'];
+            if (hqAny is String && hqAny.trim().isNotEmpty) {
+              highlightQuery = hqAny.trim();
+            }
+          }
+
+          return BibleChapterScreen(
+            bookId: bookId,
+            bookName: bookName,
+            initialChapter: chapter,
+            maxChapters: maxChapters,
+            highlightVerse: highlightVerse,
+            highlightQuery: highlightQuery,
+          );
+        },
+      ),
     ],
     redirect: (context, state) {
       final loc = state.matchedLocation;
@@ -252,21 +333,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 5) Avatar setup gate (server-driven)
       // Backend stores avatarConfig/avatarUpdatedAt, so rely on /auth/me payload.
       // If user is authenticated and already has churchId, but avatar is absent,
-      // redirect to /avatar/setup (except when already there).
+      // we MUST keep them on /avatar/setup (and not bounce to /tasks).
       final hasAvatar = user.hasAvatar;
-      if (!hasAvatar && loc != AppRoutes.avatarSetup) {
+
+      if (!hasAvatar) {
+        // Allow staying on avatar setup.
+        if (loc == AppRoutes.avatarSetup) return null;
+        // Allow avatar flow itself.
+        if (loc.startsWith(AppRoutes.avatar)) return null;
+        // Allow going back to church selection from setup.
+        if (loc == AppRoutes.church) return null;
         return AppRoutes.avatarSetup;
       }
 
-      // User has a church: normal flow.
+      // User has a church and avatar: normal flow.
       // Redirect only from bootstrap/auth flow screens into the app shell.
       // For any valid in-shell location (including /settings), do NOT override it.
       if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
           loc == AppRoutes.register ||
           loc == AppRoutes.server ||
-          loc == AppRoutes.church ||
-          loc == AppRoutes.avatarSetup) {
+          loc == AppRoutes.church) {
         return AppRoutes.tasks;
       }
 
@@ -313,6 +400,11 @@ abstract final class AppRoutes {
   static const admin = '/admin';
   static const superadmin = '/superadmin';
   static const forbidden = '/403';
+
+  // Bible
+  static const bible = '/bible';
+  static const bibleSearch = '/bible/search';
+  static const bibleChapter = '/bible/:bookId/:chapter';
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
@@ -470,10 +562,11 @@ final class _AppShell extends ConsumerWidget {
 
   List<String> _tabs({required bool isAdmin}) {
     // Order matters: index in this list == NavigationBar index.
-    // Bottom navigation must have only two tabs: Tasks and My Submissions.
+    // Bottom navigation: Tasks, Bible, My Submissions.
     // Admin stays reachable via routes, but not as a bottom tab.
     return const <String>[
       AppRoutes.tasks,
+      AppRoutes.bible,
       AppRoutes.submissionsMine,
     ];
   }
@@ -505,6 +598,11 @@ final class _AppShell extends ConsumerWidget {
         label: 'Задания',
       ),
       const NavigationDestination(
+        icon: Icon(Icons.menu_book_outlined),
+        selectedIcon: Icon(Icons.menu_book),
+        label: 'Библия',
+      ),
+      const NavigationDestination(
         icon: Icon(Icons.inbox_outlined),
         selectedIcon: Icon(Icons.inbox),
         label: 'Мои заявки',
@@ -518,7 +616,8 @@ final class _AppShell extends ConsumerWidget {
         location.startsWith(AppRoutes.stats) ||
         location.startsWith(AppRoutes.church) ||
         location.startsWith(AppRoutes.admin) ||
-        location.startsWith(AppRoutes.superadmin);
+        location.startsWith(AppRoutes.superadmin) ||
+        location.startsWith('/bible/');
 
     return Scaffold(
       body: child,

@@ -43,6 +43,50 @@ class BibleRepository {
     return BibleSearchResponse.fromJson(json);
   }
 
+  Future<BibleSearchResponse> searchRusSynPreview({
+    required String query,
+    int limit = 4,
+    int timeBudgetMs = 2500,
+  }) async {
+    final json = await _apiClient.searchPreview(
+      translationId: 'rus_syn',
+      query: query,
+      limit: limit,
+      timeBudgetMs: timeBudgetMs,
+    );
+    return BibleSearchResponse.fromJson(json);
+  }
+
+  Future<BibleSearchResponse> searchPreviewAllBible(
+    String q, {
+    int limit = 4,
+    int timeBudgetMs = 2500,
+  }) async {
+    final json = await _apiClient.searchPreview(
+      translationId: 'rus_syn',
+      query: q,
+      limit: limit,
+      timeBudgetMs: timeBudgetMs,
+    );
+    return BibleSearchResponse.fromJson(json);
+  }
+
+  Future<BibleSearchResponse> searchAllBible(
+    String q, {
+    int limit = 200,
+    int offset = 0,
+    int timeBudgetMs = 15000,
+  }) async {
+    final json = await _apiClient.searchAllRaw(
+      translationId: 'rus_syn',
+      q: q,
+      limit: limit,
+      offset: offset,
+      timeBudgetMs: timeBudgetMs,
+    );
+    return BibleSearchResponse.fromJson(json);
+  }
+
   Future<Translation> getRusSynTranslationsOrValidate() async {
     final raw = await _apiClient.getTranslations();
 

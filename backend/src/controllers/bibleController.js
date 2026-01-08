@@ -14,6 +14,12 @@ function sendServiceError(res, err) {
   return res.status(status).json({ error: code, ...rest });
 }
 
+function clampInt(value, defaultValue, min, max) {
+  const n = parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(n)) return defaultValue;
+  return Math.min(max, Math.max(min, n));
+}
+
 async function translations(req, res) {
   try {
     const data = await bibleService.getTranslations();
@@ -119,9 +125,51 @@ async function search(req, res) {
   }
 }
 
+async function searchPreview(req, res) {
+  try {
+    const translationId = req.params.translationId;
+    const q = String(req.query.q || '').trim();
+    const limit = clampInt(req.query.limit, 4, 1, 20);
+    const timeBudgetMs = clampInt(req.query.timeBudgetMs, 1800, 200, 5000);
+
+    if (q.length < 2) {
+      return res.status(400).json({ error: 'BAD_REQUEST', message: 'q too short' });
+    }
+
+    const data = await bibleService.searchAllPreview(translationId, q, limit, timeBudgetMs);
+    return res.json(data);
+  } catch (err) {
+    if (isServiceError(err)) return sendServiceError(res, err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+}
+
+async function searchAll(req, res) {
+  try {
+    const translationId = req.params.translationId;
+    const q = String(req.query.q || '').trim();
+
+    if (q.length < 2) {
+      return res.status(400).json({ error: 'BAD_REQUEST', message: 'q too short' });
+    }
+
+    const limit = clampInt(req.query.limit, 200, 1, 500);
+    const timeBudgetMs = clampInt(req.query.timeBudgetMs, 15000, 1000, 60000);
+    const offset = clampInt(req.query.offset, 0, 0, 1_000_000);
+
+    const data = await bibleService.searchAll(translationId, q, limit, timeBudgetMs, offset);
+    return res.json(data);
+  } catch (err) {
+    if (isServiceError(err)) return sendServiceError(res, err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+}
+
 module.exports = {
   translations,
   books,
   chapter,
-  search
+  search,
+  searchPreview,
+  searchAll
 };

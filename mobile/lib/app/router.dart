@@ -35,6 +35,8 @@ import '../features/profile/presentation/change_email_screen.dart';
 import '../features/bible/presentation/bible_books_screen.dart';
 import '../features/bible/presentation/bible_chapter_screen.dart';
 import '../features/bible/presentation/bible_search_screen.dart';
+import '../features/bible/presentation/bible_search_all_screen.dart';
+import '../features/bible/models/bible_search.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   debugPrint('appRouterProvider created');
@@ -180,26 +182,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.bibleSearch,
+        builder: (context, state) => const BibleSearchScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.bibleSearchAll,
         builder: (context, state) {
-          String? initialBookId;
-          String? initialBookName;
+          String query = '';
+          List<BibleSearchHit> initial = const [];
 
           final extra = state.extra;
           if (extra is Map) {
-            final idAny = extra['initialBookId'];
-            final nameAny = extra['initialBookName'];
-            if (idAny is String && idAny.trim().isNotEmpty) {
-              initialBookId = idAny.trim();
-            }
-            if (nameAny is String && nameAny.trim().isNotEmpty) {
-              initialBookName = nameAny.trim();
+            final qAny = extra['query'];
+            if (qAny is String) query = qAny;
+            final initAny = extra['initialResults'];
+            if (initAny is List) {
+              initial = initAny.whereType<BibleSearchHit>().toList();
             }
           }
 
-          return BibleSearchScreen(
-            initialBookId: initialBookId,
-            initialBookName: initialBookName,
-          );
+          return BibleSearchAllScreen(query: query, initialResults: initial);
         },
       ),
       GoRoute(
@@ -405,6 +406,7 @@ abstract final class AppRoutes {
   static const bible = '/bible';
   static const bibleSearch = '/bible/search';
   static const bibleChapter = '/bible/:bookId/:chapter';
+  static const bibleSearchAll = '/bible/search-all';
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';

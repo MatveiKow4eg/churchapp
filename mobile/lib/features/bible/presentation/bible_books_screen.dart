@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../bible_providers.dart';
 import '../bible_progress_providers.dart';
 import '../models/book.dart';
-import 'bible_search_screen.dart';
 
 class BibleBooksScreen extends ConsumerStatefulWidget {
   const BibleBooksScreen({super.key});

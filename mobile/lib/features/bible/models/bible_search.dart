@@ -1,11 +1,15 @@
 class BibleSearchHit {
   const BibleSearchHit({
+    required this.bookId,
+    this.bookName,
     required this.chapter,
     required this.verse,
     required this.text,
     this.ref,
   });
 
+  final String bookId;
+  final String? bookName;
   final int chapter;
   final int verse;
   final String text;
@@ -25,6 +29,10 @@ class BibleSearchHit {
   }
 
   factory BibleSearchHit.fromJson(Map<String, dynamic> json) {
+    final bookId = _asString(json['bookId']).trim();
+    final bookNameRaw = json['bookName'];
+    final bookNameStr = bookNameRaw == null ? null : _asString(bookNameRaw).trim();
+
     final chapter = _asInt(json['chapter']);
     final verse = _asInt(json['verse']);
     final text = _asString(json['text']);
@@ -32,6 +40,8 @@ class BibleSearchHit {
     final refStr = refRaw == null ? null : _asString(refRaw).trim();
 
     return BibleSearchHit(
+      bookId: bookId,
+      bookName: (bookNameStr == null || bookNameStr.isEmpty) ? null : bookNameStr,
       chapter: chapter,
       verse: verse,
       text: text,
@@ -43,17 +53,17 @@ class BibleSearchHit {
 class BibleSearchResponse {
   const BibleSearchResponse({
     required this.translationId,
-    required this.bookId,
     required this.query,
     required this.total,
     required this.results,
+    this.meta,
   });
 
   final String translationId;
-  final String bookId;
   final String query;
   final int total;
   final List<BibleSearchHit> results;
+  final Map<String, dynamic>? meta;
 
   static int _asInt(dynamic v, {int fallback = 0}) {
     if (v is int) return v;
@@ -70,7 +80,6 @@ class BibleSearchResponse {
 
   factory BibleSearchResponse.fromJson(Map<String, dynamic> json) {
     final translationId = _asString(json['translationId']);
-    final bookId = _asString(json['bookId']);
     final query = _asString(json['query']);
     final total = _asInt(json['total']);
 
@@ -84,12 +93,15 @@ class BibleSearchResponse {
       }
     }
 
+    final metaAny = json['meta'];
+    final meta = metaAny is Map ? Map<String, dynamic>.from(metaAny) : null;
+
     return BibleSearchResponse(
       translationId: translationId,
-      bookId: bookId,
       query: query,
       total: total > 0 ? total : hits.length,
       results: hits,
+      meta: meta,
     );
   }
 }

@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../app/router.dart';
 
 import '../bible_providers.dart';
 import '../models/bible_search.dart';
-import '../models/book.dart';
 
 class BibleSearchScreen extends ConsumerStatefulWidget {
   const BibleSearchScreen({
@@ -23,147 +23,104 @@ class BibleSearchScreen extends ConsumerStatefulWidget {
 }
 
 class _BibleSearchScreenState extends ConsumerState<BibleSearchScreen> {
-  final TextEditingController _queryController = TextEditingController();
-  final FocusNode _queryFocus = FocusNode();
-
+  final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
-
-  bool _loadingBooks = false;
-  List<Book> _books = const [];
-  Book? _selectedBook;
-
-  String? _bookId;
-  String? _bookName;
-  int? _maxChapters;
 
   bool _loading = false;
   String? _error;
-  BibleSearchResponse? _response;
+  BibleSearchResponse? _resp;
+
+  DateTime? _lastRequestAt;
+  int? _activeRequestId;
 
   @override
   void initState() {
     super.initState();
 
-    _bookId = widget.initialBookId?.trim().isEmpty == true
-        ? null
-        : widget.initialBookId?.trim();
-    _bookName = widget.initialBookName?.trim().isEmpty == true
-        ? null
-        : widget.initialBookName?.trim();
-
-    if (_bookId == null) {
-      _loadBooks();
-    }
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _queryFocus.requestFocus();
+      if (mounted) {
+        FocusScope.of(context).requestFocus(FocusNode());
+      }
     });
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _queryController.dispose();
-    _queryFocus.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _loadBooks() async {
-    setState(() {
-      _loadingBooks = true;
-      _error = null;
-    });
+  void _onQueryChanged(String raw) {
+    final q = raw.trim();
 
-    try {
-      final repo = ref.read(bibleRepositoryProvider);
-      final books = await repo.getRusSynBooks();
+    // Clear results on too-short query.
+    if (q.length < 2) {
+      _debounce?.cancel();
+      final requestId = DateTime.now().microsecondsSinceEpoch;
+      _activeRequestId = requestId;
 
-      if (!mounted) return;
-
-      Book? initialSelected;
-      if (_bookId != null) {
-        try {
-          initialSelected = books.firstWhere((b) => b.id == _bookId);
-        } catch (_) {
-          initialSelected = null;
-        }
-      }
-
-      setState(() {
-        _books = books;
-        _selectedBook = initialSelected;
-        _loadingBooks = false;
-
-        if (initialSelected != null) {
-          _bookId = initialSelected.id;
-          _bookName = initialSelected.name;
-          _maxChapters = initialSelected.chaptersCount;
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loadingBooks = false;
-      });
-    }
-  }
-
-  void _scheduleSearch() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      _search();
-    });
-  }
-
-  void _clearQuery() {
-    _debounce?.cancel();
-    _queryController.clear();
-    setState(() {
-      _error = null;
-      _response = null;
-    });
-  }
-
-  Future<void> _search() async {
-    final query = _queryController.text.trim();
-    final bookId = _bookId;
-
-    if (query.length < 2 || bookId == null || bookId.isEmpty) {
       setState(() {
         _loading = false;
-        _response = null;
         _error = null;
+        _resp = null;
+        _lastRequestAt = DateTime.now();
       });
       return;
     }
 
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _fetchPreview(q);
+    });
+  }
+
+  Future<void> _fetchPreview(String q) async {
+    final requestId = DateTime.now().microsecondsSinceEpoch;
+    _activeRequestId = requestId;
+
     setState(() {
       _loading = true;
       _error = null;
+      _lastRequestAt = DateTime.now();
     });
 
     try {
       final repo = ref.read(bibleRepositoryProvider);
-      final resp = await repo.searchRusSynInBook(
-        bookId: bookId,
-        query: query,
-        limit: 50,
+      final fetch = repo.searchRusSynPreview(
+        query: q,
+        limit: 4,
+        timeBudgetMs: 2500,
       );
+      final minDelay = Future.delayed(const Duration(seconds: 2));
+
+      final results = await Future.wait([fetch, minDelay]);
+      final resp = results.first as BibleSearchResponse;
 
       if (!mounted) return;
+      if (_activeRequestId != requestId) return;
+
       setState(() {
-        _response = resp;
+        _resp = resp;
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
+      if (_activeRequestId != requestId) return;
+
       setState(() {
         _error = e.toString();
         _loading = false;
-        _response = null;
+        _resp = null;
       });
     }
+  }
+
+  void _retry() {
+    final q = _controller.text.trim();
+    if (q.length < 2) return;
+    _debounce?.cancel();
+    _fetchPreview(q);
   }
 
   List<TextSpan> _buildHighlightedSnippet(
@@ -208,12 +165,9 @@ class _BibleSearchScreenState extends ConsumerState<BibleSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _queryController.text.trim();
-    final bookId = _bookId;
-
-    final results = _response?.results ?? const <BibleSearchHit>[];
-
-    final canSearch = (bookId != null && bookId.isNotEmpty) && query.length >= 2;
+    final query = _controller.text.trim();
+    final results = _resp?.results ?? const <BibleSearchHit>[];
+    final canShowAll = _resp != null && query.length >= 2;
 
     return Scaffold(
       appBar: AppBar(
@@ -236,141 +190,124 @@ class _BibleSearchScreenState extends ConsumerState<BibleSearchScreen> {
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
             child: Column(
               children: [
-                if (widget.initialBookId == null)
-                  Column(
-                    children: [
-                      if (_loadingBooks)
-                        const LinearProgressIndicator(minHeight: 2)
-                      else
-                        DropdownButtonFormField<Book>(
-                          value: _selectedBook,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Книга',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: _books
-                              .map(
-                                (b) => DropdownMenuItem<Book>(
-                                  value: b,
-                                  child: Text(b.name),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (b) {
-                            setState(() {
-                              _selectedBook = b;
-                              _bookId = b?.id;
-                              _bookName = b?.name;
-                              _maxChapters = b?.chaptersCount;
-                              _response = null;
-                              _error = null;
-                            });
-                            _scheduleSearch();
-                          },
-                        ),
-                      const SizedBox(height: 10),
-                    ],
-                  )
-                else
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        _bookName ?? _bookId ?? '',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                  ),
                 TextField(
-                  controller: _queryController,
-                  focusNode: _queryFocus,
+                  controller: _controller,
                   decoration: InputDecoration(
-                    labelText: 'Запрос (минимум 2 символа)',
+                    hintText: 'Поиск по всей Библии…',
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _queryController.text.isEmpty
+                    suffixIcon: _controller.text.isEmpty
                         ? null
                         : IconButton(
                             tooltip: 'Очистить',
                             icon: const Icon(Icons.clear),
-                            onPressed: _clearQuery,
+                            onPressed: () {
+                              _debounce?.cancel();
+                              _controller.clear();
+                              final requestId = DateTime.now().microsecondsSinceEpoch;
+                              _activeRequestId = requestId;
+                              setState(() {
+                                _loading = false;
+                                _error = null;
+                                _resp = null;
+                                _lastRequestAt = DateTime.now();
+                              });
+                            },
                           ),
                   ),
-                  onChanged: (_) {
-                    setState(() {
-                      _error = null;
-                    });
-                    _scheduleSearch();
-                  },
-                  onSubmitted: (_) => _search(),
+                  onChanged: _onQueryChanged,
                 ),
-                if (!canSearch)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Выберите книгу и введите минимум 2 символа'),
+                if (canShowAll)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        final current = _resp;
+                        if (current == null) return;
+                        context.go(
+                          AppRoutes.bibleSearchAll,
+                          extra: {
+                            'query': query,
+                            'initialResults': current.results,
+                          },
+                        );
+                      },
+                      child: const Text('Показать все'),
                     ),
                   ),
               ],
             ),
           ),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Text(
-                _error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
           Expanded(
-            child: results.isEmpty
-                ? const SizedBox.shrink()
-                : ListView.separated(
-                    itemCount: results.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final r = results[index];
-
-                      final title = (r.ref != null && r.ref!.trim().isNotEmpty)
-                          ? r.ref!.trim()
-                          : '${_bookName ?? _bookId ?? ''} ${r.chapter}:${r.verse}';
-
-                      return ListTile(
-                        title: Text(title),
-                        subtitle: RichText(
-                          text: TextSpan(
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            children: _buildHighlightedSnippet(
-                              context,
-                              text: r.text,
-                              query: query,
-                            ),
+            child: _loading
+                ? const Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 12),
+                        Text('Ищем…'),
+                      ],
+                    ),
+                  )
+                : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _error!,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: _retry,
+                                child: const Text('Повторить'),
+                              ),
+                            ],
                           ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          final bId = _bookId;
-                          if (bId == null || bId.isEmpty) return;
+                      )
+                    : _resp != null
+                        ? (results.isEmpty
+                            ? const Center(child: Text('Ничего не найдено'))
+                            : ListView.separated(
+                                itemCount: results.length > 4 ? 4 : results.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final hit = results[index];
+                                  final title =
+                                      '${hit.bookName ?? hit.bookId} ${hit.chapter}:${hit.verse}';
 
-                          context.go(
-                            '/bible/$bId/${r.chapter}',
-                            extra: {
-                              'bookName': _bookName ?? bId,
-                              'maxChapters': _maxChapters,
-                              'highlightVerse': r.verse,
-                              'highlightQuery': query,
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
+                                  return ListTile(
+                                    title: Text(title),
+                                    subtitle: Text(
+                                      hit.text,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () {
+                                      final bookId = hit.bookId;
+                                      if (bookId.isEmpty) return;
+                                      context.go(
+                                        '/bible/$bookId/${hit.chapter}',
+                                        extra: {
+                                          'bookName': hit.bookName ?? bookId,
+                                          'highlightVerse': hit.verse,
+                                          'highlightQuery': query,
+                                        },
+                                      );
+                                    },
+                                  );
+                                },
+                              ))
+                        : const SizedBox.shrink(),
           ),
         ],
       ),

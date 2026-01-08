@@ -2,10 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-    'placeholder: after saving profile app should remain on /settings',
+    'placeholder: after saving profile app should remain ßn /settings',
     () {
       // TODO: Add widget test once app wiring (providers/router overrides)
-      // is exposed for tests.
+      // is exposed for tests.ß
       //
       // Expected behavior:
       // - Navigate to /settings/edit-profile

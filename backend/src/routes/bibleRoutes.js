@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { translations, books, chapter, search } = require('../controllers/bibleController');
+const { translations, books, chapter, search, searchPreview, searchAll } = require('../controllers/bibleController');
 
 const bibleRouter = express.Router();
 
@@ -20,6 +20,12 @@ bibleRouter.get('/search', (req, res) => {
 
 // GET /bible/:translationId/search
 bibleRouter.get('/:translationId/search', search);
+
+// GET /bible/:translationId/search-preview
+bibleRouter.get('/:translationId/search-preview', searchPreview);
+
+// GET /bible/:translationId/search-all
+bibleRouter.get('/:translationId/search-all', searchAll);
 
 // GET /bible/:translationId/:bookId/:chapter
 bibleRouter.get('/:translationId/:bookId/:chapter', chapter);

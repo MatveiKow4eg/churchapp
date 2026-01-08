@@ -147,6 +147,58 @@ class BibleApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> searchPreview({
+    required String translationId,
+    required String query,
+    int limit = 4,
+    int timeBudgetMs = 2500,
+  }) async {
+    try {
+      final res = await _dio.get(
+        '/bible/$translationId/search-preview',
+        queryParameters: {
+          'q': query,
+          'limit': limit,
+          'timeBudgetMs': timeBudgetMs,
+        },
+      );
+
+      final data = res.data;
+      if (data is Map) return data.cast<String, dynamic>();
+      throw Exception('Unexpected search-preview response type: ${data.runtimeType}');
+    } on DioException catch (e) {
+      throw Exception('Bible preview search failed: ${e.message}');
+    } catch (e) {
+      throw Exception('Bible preview search parse failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> searchAllRaw({
+    required String translationId,
+    required String q,
+    int limit = 200,
+    int offset = 0,
+    int timeBudgetMs = 15000,
+  }) async {
+    try {
+      final res = await _dio.get(
+        '/bible/$translationId/search-all',
+        queryParameters: {
+          'q': q,
+          'limit': limit,
+          'offset': offset,
+          'timeBudgetMs': timeBudgetMs,
+        },
+      );
+      final data = res.data;
+      if (data is Map<String, dynamic>) return data;
+      if (data is Map) return data.cast<String, dynamic>();
+      throw Exception('Unexpected search-all response type: ${data.runtimeType}');
+    } on DioException catch (e) {
+      throw Exception('Bible search-all failed: ${e.message}');
+    }
+  }
+
   String _friendlyDioError(String operation, DioException e) {
     final status = e.response?.statusCode;
     final statusPart = status == null ? '' : ' (HTTP $status)';

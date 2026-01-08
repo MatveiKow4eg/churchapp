@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import '../bible_providers.dart';
 import '../bible_progress_providers.dart';
 import '../models/verse.dart';
+import '../bible_reader_settings_providers.dart';
+import '../bible_reader_settings_storage.dart';
+import 'bible_reader_settings_sheet.dart';
 
 class BibleChapterScreen extends ConsumerStatefulWidget {
   const BibleChapterScreen({
@@ -40,6 +43,10 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
 
   final ScrollController _scrollController = ScrollController();
 
+  // Temporary highlight state for verse from search
+  // bool _highlightActive = false;
+  // Timer? _highlightTimer;
+
   /// Used for reliable auto-scroll to a highlighted verse.
   final Map<int, GlobalKey> _verseKeys = <int, GlobalKey>{};
 
@@ -62,7 +69,7 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
     super.initState();
     _chapterNumber = widget.initialChapter;
 
-    // If opened from search result, preselect the verse.
+    // If opened from search result, enable temporary highlight
     final v = widget.highlightVerse;
     if (v != null && v > 0) {
       _selectedVerseNumbers.add(v);
@@ -71,6 +78,7 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
 
   @override
   void dispose() {
+    // _highlightTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -93,9 +101,12 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
     setState(() => _chapterNumber++);
   }
 
+  
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(bibleRepositoryProvider);
+    final settingsAsync = ref.watch(bibleReaderSettingsProvider);
+    final settings = settingsAsync.value ?? BibleReaderSettings.defaults;
 
     return Scaffold(
       appBar: AppBar(
@@ -112,7 +123,19 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
         title: Text('${widget.bookName} $_chapterNumber'),
         actions: [
           IconButton(
-            tooltip: 'Скопировать выбранное',
+            tooltip: 'Настройки чтения',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const BibleReaderSettingsSheet(),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: 'Скопир��вать выбранное',
             icon: const Icon(Icons.copy),
             onPressed: _selectedVerseNumbers.isEmpty
                 ? null
@@ -283,22 +306,38 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                   : null;
 
               final content = Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: RichText(
-                  text: TextSpan(
-                    style: DefaultTextStyle.of(context).style,
-                    children: [
-                      TextSpan(
-                        text: '${v.number} ',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                padding: EdgeInsets.symmetric(horizontal: settings.horizontalPadding),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (settings.showVerseNumbers)
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '${v.number}',
+                          textAlign: TextAlign.right,
+                          style: DefaultTextStyle.of(context).style.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant
+                                    .withOpacity(0.75),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                height: settings.lineHeight,
+                              ),
                         ),
                       ),
-                      TextSpan(text: v.text),
-                    ],
-                  ),
+                    if (settings.showVerseNumbers) const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        v.text,
+                        style: DefaultTextStyle.of(context).style.copyWith(
+                              fontSize: settings.fontSize,
+                              height: settings.lineHeight,
+                            ),
+                      ),
+                    ),
+                  ],
                 ),
               );
 

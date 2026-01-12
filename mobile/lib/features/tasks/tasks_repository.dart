@@ -153,6 +153,34 @@ class TasksRepository {
     }
   }
 
+  Future<void> deleteTask(String taskId) async {
+    try {
+      await _apiClient.dio.delete<void>('/tasks/$taskId');
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      if (status == 409 && data is Map) {
+        final err = data['error'];
+        if (err is Map && (err['code']?.toString() ?? '') == 'NO_CHURCH') {
+          throw const AppError(code: 'NO_CHURCH', message: 'NO_CHURCH');
+        }
+      }
+
+      if (status == 401) {
+        throw const AppError(code: 'UNAUTHORIZED', message: 'UNAUTHORIZED');
+      }
+
+      if (status == 403) {
+        throw const AppError(code: 'FORBIDDEN', message: 'FORBIDDEN');
+      }
+
+      throw _mapToRequiredError(e);
+    } catch (e) {
+      throw _mapToRequiredError(e);
+    }
+  }
+
   Future<List<TaskModel>> fetchTasks({
     bool activeOnly = true,
     String? category,

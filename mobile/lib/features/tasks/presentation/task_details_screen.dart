@@ -6,6 +6,9 @@ import '../../../app/router.dart';
 import '../../../core/errors/app_error.dart';
 import '../../submissions/create_submission_controller.dart';
 import '../tasks_providers.dart';
+import '../../../core/ui/task_category_i18n.dart';
+import '../../../core/ui/bible_refs.dart';
+import '../../tasks/task_draft_providers.dart';
 
 class TaskDetailsScreen extends ConsumerStatefulWidget {
   const TaskDetailsScreen({super.key, required this.taskId});
@@ -19,9 +22,38 @@ class TaskDetailsScreen extends ConsumerStatefulWidget {
 class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
   bool _pendingLocally = false;
 
+  /// Draft text for the submit bottom sheet.
+  ///
+  /// Backed by persistent storage so it survives tab switches and app restarts.
+  final TextEditingController _submitCommentController =
+      TextEditingController();
+
+  bool _draftLoaded = false;
+
+  TextEditingController? _sheetController;
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(taskByIdProvider(widget.taskId));
+
+    // Load draft once per screen instance.
+    if (!_draftLoaded) {
+      _draftLoaded = true;
+      Future.microtask(() async {
+        final storage = ref.read(taskDraftStorageProvider);
+        final saved = await storage.loadCommentDraft(widget.taskId);
+        if (!mounted) return;
+        if (saved != null && saved.isNotEmpty) {
+          _submitCommentController.text = saved;
+        }
+      });
+
+      // Persist on each change.
+      _submitCommentController.addListener(() {
+        final storage = ref.read(taskDraftStorageProvider);
+        storage.saveCommentDraft(widget.taskId, _submitCommentController.text);
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -60,7 +92,7 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                               _Badge(
                                 text: task.category.isEmpty
                                     ? 'Без категории'
-                                    : task.category,
+                                    : localizeTaskCategory(task.category),
                               ),
                               const Spacer(),
                               Text(
@@ -78,8 +110,55 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            task.description,
+                            stripBibleRefsFromDescription(task.description),
                             style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 12),
+                          Builder(
+                            builder: (context) {
+                              final refs =
+                                  parseBibleRefsFromDescription(task.description);
+                              if (refs.isEmpty) return const SizedBox.shrink();
+
+                              return OutlinedButton.icon(
+                                onPressed: () {
+                                  showModalBottomSheet<void>(
+                                    context: context,
+                                    showDragHandle: true,
+                                    builder: (sheetContext) {
+                                      return SafeArea(
+                                        child: ListView(
+                                          padding: const EdgeInsets.all(16),
+                                          shrinkWrap: true,
+                                          children: [
+                                            Text(
+                                              'Места Писания',
+                                              style: Theme.of(sheetContext)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            for (final r in refs)
+                                              ..._buildBibleRefTiles(
+                                                context: context,
+                                                sheetContext: sheetContext,
+                                                ref: r,
+                                              ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                                icon: const Icon(Icons.menu_book_outlined),
+                                label: Text(
+                                  'Места Писания (${_countBibleRefItems(refs)})',
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -90,7 +169,10 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton(
-                      onPressed: () => _openSubmitSheet(context),
+                      onPressed: () => _openSubmitSheet(
+                        context,
+                        taskCategory: task.category,
+                      ),
                       child: const Text('Выполнено'),
                     ),
                   ),
@@ -131,13 +213,30 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
     );
   }
 
-  void _openSubmitSheet(BuildContext context) {
+  @override
+  void dispose() {
+    _submitCommentController.dispose();
+    _sheetController?.dispose();
+    _sheetController = null;
+    super.dispose();
+  }
+
+  void _openSubmitSheet(BuildContext context, {required String taskCategory}) {
     // Use ScaffoldMessenger from the page context (NOT the sheet context), so we
     // can safely show snackbars after the sheet is closed.
     final rootScaffoldMessenger = ScaffoldMessenger.of(context);
     final rootRouter = GoRouter.of(context);
 
-    final commentController = TextEditingController();
+    // Create the controller inside the bottom-sheet builder so it can't be used
+    // after being disposed if the sheet rebuilds / is dismissed.
+
+    bool isReflectionTask(String category) {
+      return category.trim().toUpperCase() == 'REFLECTION';
+    }
+
+    // Keep draft text between openings; only reset sheet-local controller.
+    _sheetController?.dispose();
+    _sheetController = null;
 
     showModalBottomSheet<void>(
       context: context,
@@ -154,6 +253,11 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
 
         return StatefulBuilder(
           builder: (ctx, setModalState) {
+            // Controller must live for the lifetime of this bottom sheet.
+            // Create it once per sheet, even if the builder rebuilds.
+            // Using a simple closure-cached controller avoids re-initializing on rebuilds.
+            final commentController = _submitCommentController;
+
             // The sheet can be dismissed by swipe/back; after that `setModalState`
             // will throw. Guard all sheet state updates.
             bool sheetActive = true;
@@ -164,6 +268,21 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
 
             Future<void> doSubmit() async {
               if (isSubmitting) return;
+
+              final comment = commentController.text.trim();
+              if (isReflectionTask(taskCategory)) {
+                if (comment.length < 20) {
+                  rootScaffoldMessenger
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text('Для задания “Размышление” нужно минимум 20 символов'),
+                      ),
+                    );
+                  return;
+                }
+              }
+
               safeSetSheetState(() => isSubmitting = true);
 
               try {
@@ -171,11 +290,17 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     .read(createSubmissionControllerProvider.notifier)
                     .submit(
                       taskId: widget.taskId,
-                      commentUser: commentController.text,
+                      commentUser: comment,
                     );
 
                 // 1) Close the sheet first (using its context).
                 closeSheetIfOpen();
+
+                // Clear draft only after successful submission.
+                _submitCommentController.clear();
+                await ref
+                    .read(taskDraftStorageProvider)
+                    .clearCommentDraft(widget.taskId);
 
                 // 2) Update parent page state (only if still mounted).
                 if (!mounted) return;
@@ -188,6 +313,10 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                   ..showSnackBar(
                     const SnackBar(content: Text('Отправлено на проверку')),
                   );
+
+                // 4) Navigate back to tasks list.
+                if (!mounted) return;
+                context.go(AppRoutes.tasks);
               } on AppError catch (e) {
                 // If the sheet was dismissed while the request was in-flight,
                 // don't try to update its state.
@@ -237,7 +366,9 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Комментарий (необязательно)',
+                      isReflectionTask(taskCategory)
+                          ? 'Ответ (минимум 20 символов)'
+                          : 'Комментарий (необязательно)',
                       style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -245,12 +376,14 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: commentController,
-                      maxLength: 300,
-                      maxLines: 4,
+                      maxLength: isReflectionTask(taskCategory) ? 5000 : 300,
+                      maxLines: isReflectionTask(taskCategory) ? 10 : 4,
                       enabled: !isSubmitting,
-                      decoration: const InputDecoration(
-                        hintText: 'Например: что именно сделал(а) и когда',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        hintText: isReflectionTask(taskCategory)
+                            ? 'Напиши свои мысли по заданию'
+                            : 'Например: что именно сделал(а) и когда',
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -275,7 +408,11 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
           },
         );
       },
-    ).whenComplete(commentController.dispose);
+    ).whenComplete(() {
+      // Do NOT dispose the draft controller here; it must persist until submit.
+      _sheetController?.dispose();
+      _sheetController = null;
+    });
   }
 }
 
@@ -335,6 +472,111 @@ class _Badge extends StatelessWidget {
       ),
     );
   }
+}
+
+
+int _countBibleRefItems(List<BibleRef> refs) {
+  int count = 0;
+  for (final r in refs) {
+    final fromCh = r.fromChapter;
+    final toCh = r.toChapter ?? r.fromChapter;
+    final startCh = fromCh < toCh ? fromCh : toCh;
+    final endCh = fromCh < toCh ? toCh : fromCh;
+    count += (endCh - startCh + 1);
+  }
+  return count;
+}
+
+List<Widget> _buildBibleRefTiles({
+  required BuildContext context,
+  required BuildContext sheetContext,
+  required BibleRef ref,
+}) {
+  // If reference spans multiple chapters, split into per-chapter items so the
+  // UI and actual highlighting match.
+  final fromCh = ref.fromChapter;
+  final toCh = ref.toChapter ?? ref.fromChapter;
+
+  final startCh = fromCh < toCh ? fromCh : toCh;
+  final endCh = fromCh < toCh ? toCh : fromCh;
+
+  void go({
+    required int chapter,
+    int? fromVerse,
+    int? toVerse,
+  }) {
+    Navigator.of(sheetContext).pop();
+    context.push(
+      '/bible/${ref.bookId}/$chapter',
+      extra: {
+        'bookName': ref.bookName,
+        if (fromVerse != null) 'highlightVerse': fromVerse,
+        if (toVerse != null) 'highlightToVerse': toVerse,
+      },
+    );
+  }
+
+  // Single chapter ref.
+  if (startCh == endCh) {
+    final fromV = ref.fromVerse;
+    final toV = ref.toVerse;
+    return [
+      ListTile(
+        title: Text(ref.toDisplayString()),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          if (fromV != null) {
+            go(
+              chapter: ref.fromChapter,
+              fromVerse: fromV,
+              toVerse: toV ?? fromV,
+            );
+          } else {
+            go(chapter: ref.fromChapter);
+          }
+        },
+      ),
+    ];
+  }
+
+  // Multi-chapter ref.
+  final tiles = <Widget>[];
+  for (var ch = startCh; ch <= endCh; ch++) {
+    final isFirst = ch == startCh;
+    final isLast = ch == endCh;
+
+    // Start verse for the first chapter: use fromVerse or 1.
+    final fromV = isFirst ? (ref.fromVerse ?? 1) : 1;
+
+    // End verse for the last chapter: use toVerse; if absent, don't pass end
+    // (we can't know the last verse without fetching the chapter here).
+    final toV = isLast ? ref.toVerse : null;
+
+    final label = isFirst
+        ? '${ref.bookName} $ch:${fromV}${isLast && toV != null ? '–$toV' : ''}'
+        : (isLast && toV != null)
+            ? '${ref.bookName} $ch:1–$toV'
+            : '${ref.bookName} $ch';
+
+    tiles.add(
+      ListTile(
+        title: Text(label),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          if (isFirst && !isLast) {
+            // Highlight from start verse to end of chapter (no end provided).
+            go(chapter: ch, fromVerse: fromV);
+          } else if (isLast && toV != null) {
+            go(chapter: ch, fromVerse: fromV, toVerse: toV);
+          } else {
+            go(chapter: ch);
+          }
+        },
+      ),
+    );
+  }
+
+  return tiles;
 }
 
 class _ErrorState extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ class BibleChapterScreen extends ConsumerStatefulWidget {
     this.initialChapter = 1,
     this.maxChapters,
     this.highlightVerse,
+    this.highlightToVerse,
     this.highlightQuery,
   });
 
@@ -27,21 +29,75 @@ class BibleChapterScreen extends ConsumerStatefulWidget {
   final String bookName;
   final int initialChapter;
   final int? maxChapters;
+
+  /// First verse to highlight (inclusive).
   final int? highlightVerse;
+
+  /// End verse to highlight (inclusive). If null, highlights only [highlightVerse].
+  final int? highlightToVerse;
+
   final String? highlightQuery;
 
   @override
   ConsumerState<BibleChapterScreen> createState() => _BibleChapterScreenState();
 }
 
+class _NavArrowButton extends StatelessWidget {
+  const _NavArrowButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    final enabled = onPressed != null;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: enabled
+            ? cs.primary.withValues(alpha: 0.95)
+            : cs.surfaceContainerHighest,
+        shape: const StadiumBorder(),
+        elevation: enabled ? 4 : 0,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(
+            width: 64,
+            height: 56,
+            child: Icon(
+              icon,
+              color: enabled ? cs.onPrimary : cs.onSurfaceVariant,
+              size: 34,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
   late int _chapterNumber;
   String? _lastSavedKey;
+
+  Future<dynamic>? _chapterFuture;
 
   /// Multi-select verses for copying.
   final Set<int> _selectedVerseNumbers = <int>{};
 
   final ScrollController _scrollController = ScrollController();
+
+  bool _showNavArrows = true;
+  double _lastScrollOffset = 0;
 
   // Temporary highlight state for verse from search
   // bool _highlightActive = false;
@@ -69,16 +125,60 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
     super.initState();
     _chapterNumber = widget.initialChapter;
 
-    // If opened from search result, enable temporary highlight
-    final v = widget.highlightVerse;
-    if (v != null && v > 0) {
-      _selectedVerseNumbers.add(v);
+    _lastScrollOffset = 0;
+    _scrollController.addListener(_handleScroll);
+
+    _applyInitialHighlightSelection();
+  }
+
+  void _handleScroll() {
+    final offset = _scrollController.position.pixels;
+    final delta = offset - _lastScrollOffset;
+
+    _lastScrollOffset = offset;
+
+    // Ignore tiny jitter.
+    if (delta.abs() < 6) return;
+
+    if (delta > 0) {
+      // Scrolling down => hide.
+      if (_showNavArrows) {
+        setState(() {
+          _showNavArrows = false;
+        });
+      }
+    } else {
+      // Scrolling up => show.
+      if (!_showNavArrows) {
+        setState(() {
+          _showNavArrows = true;
+        });
+      }
+    }
+  }
+
+  void _applyInitialHighlightSelection() {
+    // Only preselect verses for the initial highlight range.
+    _selectedVerseNumbers.clear();
+
+    final start = widget.highlightVerse;
+    if (start == null || start <= 0) return;
+
+    final endRaw = widget.highlightToVerse;
+    final end = (endRaw == null || endRaw <= 0) ? start : endRaw;
+
+    final lo = start < end ? start : end;
+    final hi = start < end ? end : start;
+
+    for (var i = lo; i <= hi; i++) {
+      _selectedVerseNumbers.add(i);
     }
   }
 
   @override
   void dispose() {
     // _highlightTimer?.cancel();
+    _scrollController.removeListener(_handleScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -93,12 +193,22 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
 
   void _goPrev() {
     if (!_canPrev) return;
-    setState(() => _chapterNumber--);
+    setState(() {
+      _chapterNumber--;
+      _chapterFuture = null;
+      // Range highlight is intended for the initial open only.
+      _selectedVerseNumbers.clear();
+    });
   }
 
   void _goNext() {
     if (!_canNext) return;
-    setState(() => _chapterNumber++);
+    setState(() {
+      _chapterNumber++;
+      _chapterFuture = null;
+      // Range highlight is intended for the initial open only.
+      _selectedVerseNumbers.clear();
+    });
   }
 
   
@@ -165,32 +275,10 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: _canPrev ? _goPrev : null,
-                  icon: const Icon(Icons.chevron_left),
-                  label: const Text('Пред.'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: _canNext ? _goNext : null,
-                  icon: const Icon(Icons.chevron_right),
-                  label: const Text('След.'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
       body: FutureBuilder(
-        future: repo.getRusSynChapter(widget.bookId, _chapterNumber),
+        // Keep the Future stable across rebuilds (e.g. verse selection),
+        // otherwise FutureBuilder may restart and scroll position may jump.
+        future: _chapterFuture ??= repo.getRusSynChapter(widget.bookId, _chapterNumber),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -289,19 +377,37 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
             }
           }
 
-          return ListView.separated(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: chapter.verses.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
+          return Stack(
+            children: [
+              ListView.separated(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+                itemCount: chapter.verses.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
               final v = chapter.verses[index];
               final isSelected = _selectedVerseNumbers.contains(v.number);
 
-              final isHighlighted = widget.highlightVerse != null &&
-                  widget.highlightVerse == v.number;
+              final hvStartRaw = widget.highlightVerse;
+              final hvEndRaw = widget.highlightToVerse ?? widget.highlightVerse;
 
-              final key = isHighlighted
+              // Apply highlight only on the initial chapter that was opened.
+              final highlightActive =
+                  _chapterNumber == widget.initialChapter && hvStartRaw != null;
+
+              int? lo;
+              int? hi;
+              if (highlightActive && hvStartRaw != null && hvEndRaw != null) {
+                final a = hvStartRaw;
+                final b = hvEndRaw;
+                lo = a < b ? a : b;
+                hi = a < b ? b : a;
+              }
+
+              final isHighlighted =
+                  lo != null && hi != null && v.number >= lo && v.number <= hi;
+
+              final key = (isHighlighted && v.number == (widget.highlightVerse ?? 0))
                   ? (_verseKeys[v.number] ??= GlobalKey())
                   : null;
 
@@ -351,12 +457,15 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isHighlighted
-                            ? Theme.of(context).colorScheme.primaryContainer
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.10)
                             : Theme.of(context)
                                 .colorScheme
                                 .surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(12),
-                        border: isHighlighted
+                        border: (isHighlighted && v.number == widget.highlightVerse)
                             ? Border.all(
                                 color: Theme.of(context).colorScheme.primary,
                                 width: 1.5,
@@ -390,6 +499,44 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                 child: decorated,
               );
             },
+          ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: SafeArea(
+                  minimum: const EdgeInsets.only(bottom: 8),
+                  child: AnimatedSlide(
+                    offset: _showNavArrows ? Offset.zero : const Offset(0, 0.35),
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    child: AnimatedOpacity(
+                      opacity: _showNavArrows ? 1 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _NavArrowButton(
+                              icon: Icons.chevron_left,
+                              tooltip: 'Предыдущая глава',
+                              onPressed: _canPrev ? _goPrev : null,
+                            ),
+                            _NavArrowButton(
+                              icon: Icons.chevron_right,
+                              tooltip: 'Следующая глава',
+                              onPressed: _canNext ? _goNext : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),

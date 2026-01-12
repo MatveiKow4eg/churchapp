@@ -9,11 +9,18 @@ import '../../catalog/catalog_item.dart';
 import '../inventory_providers.dart';
 import '../models/server_inventory_item.dart';
 
-class InventoryScreen extends ConsumerWidget {
+class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<InventoryScreen> createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends ConsumerState<InventoryScreen> {
+  bool _didRedirect = false;
+
+  @override
+  Widget build(BuildContext context) {
     final asyncCatalog = ref.watch(catalogProvider);
     final asyncInv = ref.watch(serverInventoryProvider);
 
@@ -36,13 +43,17 @@ class InventoryScreen extends ConsumerWidget {
 
       if (err is AppError && err.code == 'NO_CHURCH') {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) context.go(AppRoutes.church);
+          if (!mounted || _didRedirect) return;
+          _didRedirect = true;
+          context.go(AppRoutes.church);
         });
       }
 
       if (err is AppError && err.code == 'UNAUTHORIZED') {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (context.mounted) context.go(AppRoutes.register);
+          if (!mounted || _didRedirect) return;
+          _didRedirect = true;
+          context.go(AppRoutes.register);
         });
       }
 

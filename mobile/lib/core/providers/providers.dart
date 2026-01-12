@@ -37,6 +37,12 @@ class BaseUrlNotifier extends AsyncNotifier<String> {
     await store.clearBaseUrl();
     state = const AsyncData('');
   }
+
+  /// Clears only the configured backend server URL.
+  ///
+  /// This is an alias for [clearBaseUrl] added for UX flows like
+  /// "Change server" without touching auth token/profile.
+  Future<void> clearServerUrl() => clearBaseUrl();
 }
 
 /// Marker used while baseUrlProvider is still loading.

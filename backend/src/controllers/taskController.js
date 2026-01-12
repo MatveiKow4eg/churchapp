@@ -218,10 +218,38 @@ async function updateTask(req, res, next) {
   }
 }
 
+async function deleteTask(req, res, next) {
+  try {
+    const churchId = req.user?.churchId;
+    if (!churchId) {
+      throw new HttpError(409, 'NO_CHURCH', 'Admin has no church selected');
+    }
+
+    const taskId = req.params.id;
+
+    const task = await taskService.getTaskById(taskId);
+    if (!task) {
+      throw new HttpError(404, 'NOT_FOUND', 'Task not found');
+    }
+
+    // SUPERADMIN can delete any task. ADMIN is church-scoped.
+    if (req.user?.role !== 'SUPERADMIN' && task.churchId !== churchId) {
+      throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
+    }
+
+    await taskService.deleteTask(taskId);
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listTasks,
   getTaskById,
   createTask,
   updateTask,
-  deactivateTask
+  deactivateTask,
+  deleteTask
 };

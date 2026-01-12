@@ -29,6 +29,10 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
   final Map<int, Map<String, dynamic>> _tabBaseOptions =
       <int, Map<String, dynamic>>{};
 
+  /// Used to prevent scheduled callbacks from touching the widget tree after
+  /// this State has been disposed.
+  bool _isDisposed = false;
+
   late final TabController _tabController;
 
   @override
@@ -47,6 +51,7 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _tabController.dispose();
     super.dispose();
   }
@@ -420,6 +425,7 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
       // Ensure snapshot + prefetch for initial tab.
       _tabBaseOptions.putIfAbsent(safeIndex, () => Map<String, dynamic>.from(optionsQuery));
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _isDisposed) return;
         final base = _tabBaseOptions[safeIndex] ?? optionsQuery;
         ensurePrefetchForTab(
           context: context,
@@ -517,6 +523,7 @@ class _AvatarCustomizeScreenState extends ConsumerState<AvatarCustomizeScreen>
                     );
 
                     WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted || _isDisposed) return;
                       final base = _tabBaseOptions[index] ?? optionsQuery;
                       ensurePrefetchForTab(
                         context: context,

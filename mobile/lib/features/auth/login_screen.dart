@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../core/errors/app_error.dart';
+import '../../core/providers/providers.dart';
 import 'login_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -202,6 +203,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     ),
                                   )
                                 : const Text('Войти'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: TextButton(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(baseUrlProvider.notifier)
+                                        .clearServerUrl();
+                                    if (!context.mounted) return;
+                                    context.go(AppRoutes.server);
+                                  },
+                            child: const Text('Сменить сервер'),
                           ),
                         ),
                         const SizedBox(height: 12),

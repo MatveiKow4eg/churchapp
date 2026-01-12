@@ -7,12 +7,20 @@ import '../avatar/avatar_providers.dart';
 import '../avatar/presentation/avatar_thumb_image.dart';
 import '../../core/errors/app_error.dart';
 import 'my_submissions_providers.dart';
+import '../../core/ui/task_category_i18n.dart';
 
-class MySubmissionsScreen extends ConsumerWidget {
+class MySubmissionsScreen extends ConsumerStatefulWidget {
   const MySubmissionsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MySubmissionsScreen> createState() => _MySubmissionsScreenState();
+}
+
+class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
+  bool _didRedirect = false;
+
+  @override
+  Widget build(BuildContext context) {
     final filter = ref.watch(mySubmissionsFilterProvider);
     final async = ref.watch(mySubmissionsListProvider);
 
@@ -101,15 +109,133 @@ class MySubmissionsScreen extends ConsumerWidget {
               final decided =
                   s.decidedAt == null ? null : _formatDate(s.decidedAt!);
 
+              void showDetails() {
+                showModalBottomSheet<void>(
+                  context: context,
+                  showDragHandle: true,
+                  isScrollControlled: true,
+                  builder: (sheetContext) {
+                    final theme = Theme.of(sheetContext);
+
+                    final taskTitle = task?.title ?? 'Задание';
+                    final catText = task == null
+                        ? '—'
+                        : localizeTaskCategory(task.category);
+
+                    final statusLabel = switch (s.status) {
+                      'PENDING' => 'Ожидает',
+                      'APPROVED' => 'Подтверждено',
+                      'REJECTED' => 'Отклонено',
+                      _ => s.status,
+                    };
+
+                    final created = _formatDate(s.createdAt);
+                    final decided =
+                        s.decidedAt == null ? null : _formatDate(s.decidedAt!);
+
+                    final pointsApplied = s.rewardPointsApplied;
+                    final pointsRequested = task?.pointsReward;
+
+                    return SafeArea(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: 16,
+                          right: 16,
+                          top: 12,
+                          bottom: 16 + MediaQuery.of(sheetContext).viewInsets.bottom,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              taskTitle,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _Badge(text: catText),
+                                _StatusChip(status: s.status),
+                                _Badge(
+                                  text: switch (s.status) {
+                                    'APPROVED' => '+${pointsApplied ?? 0} очков',
+                                    'PENDING' => '+${pointsRequested ?? 0} очков (ожидается)',
+                                    'REJECTED' => '0 очков',
+                                    _ => '0 очков',
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Статус: $statusLabel',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              decided == null
+                                  ? 'Создано: $created'
+                                  : 'Создано: $created\nРешено: $decided',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            if ((s.commentUser ?? '').trim().isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Твой комментарий',
+                                style: theme.textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                s.commentUser!.trim(),
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                            if ((s.commentAdmin ?? '').trim().isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                'Комментарий проверяющего',
+                                style: theme.textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                s.commentAdmin!.trim(),
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ],
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              child: const Text('Закрыть'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+
               return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: showDetails,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           Expanded(
                             child: Text(
                               task?.title ?? 'Задание',
@@ -135,7 +261,11 @@ class MySubmissionsScreen extends ConsumerWidget {
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          _Badge(text: task?.category ?? '—'),
+                          _Badge(
+                            text: task == null
+                                ? '—'
+                                : localizeTaskCategory(task.category),
+                          ),
                           const SizedBox(width: 8),
                           statusWidget,
                         ],
@@ -164,6 +294,7 @@ class MySubmissionsScreen extends ConsumerWidget {
                         ),
                       ],
                     ],
+                    ),
                   ),
                 ),
               );
@@ -175,13 +306,17 @@ class MySubmissionsScreen extends ConsumerWidget {
       error: (err, st) {
         if (err is AppError && err.code == 'NO_CHURCH') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.church);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.church);
           });
         }
 
         if (err is AppError && err.code == 'UNAUTHORIZED') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.register);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.register);
           });
         }
 

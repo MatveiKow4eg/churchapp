@@ -78,6 +78,13 @@ async function deactivateTask(taskId) {
   });
 }
 
+async function deleteTask(taskId) {
+  // Hard delete. If you want soft delete later, change this one place.
+  return prisma.task.delete({
+    where: { id: taskId }
+  });
+}
+
 module.exports = {
   prisma,
   HttpError,
@@ -85,5 +92,6 @@ module.exports = {
   getTaskById,
   createTask,
   updateTask,
-  deactivateTask
+  deactivateTask,
+  deleteTask
 };

@@ -8,12 +8,35 @@ import '../../auth/user_session_provider.dart';
 import '../presentation/no_access_screen.dart';
 import 'admin_task_actions_controller.dart';
 import 'admin_tasks_providers.dart';
+import '../../../core/ui/task_category_i18n.dart';
 
-class AdminTasksScreen extends ConsumerWidget {
+class AdminTasksScreen extends ConsumerStatefulWidget {
   const AdminTasksScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminTasksScreen> createState() => _AdminTasksScreenState();
+}
+
+class _AdminTasksScreenState extends ConsumerState<AdminTasksScreen> {
+  final Set<String> _selectedTaskIds = <String>{};
+  bool _didRedirect = false;
+
+  void _toggleSelected(String id) {
+    setState(() {
+      if (_selectedTaskIds.contains(id)) {
+        _selectedTaskIds.remove(id);
+      } else {
+        _selectedTaskIds.add(id);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(_selectedTaskIds.clear);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final isAdmin = ref.watch(isAdminProvider);
     if (!isAdmin) return const NoAccessScreen();
 
@@ -25,21 +48,154 @@ class AdminTasksScreen extends ConsumerWidget {
       await ref.read(adminTasksListProvider.notifier).refresh();
     }
 
+    final hasSelection = _selectedTaskIds.isNotEmpty;
+
+    void _handleBulkError(AppError e) {
+      if (!mounted) return;
+
+      if (e.code == 'NO_CHURCH') {
+        if (_didRedirect) return;
+        _didRedirect = true;
+        context.go(AppRoutes.church);
+        return;
+      }
+
+      if (e.code == 'UNAUTHORIZED') {
+        if (_didRedirect) return;
+        _didRedirect = true;
+        context.go(AppRoutes.register);
+        return;
+      }
+
+      final msg = e.code == 'FORBIDDEN'
+          ? 'Нет доступа'
+          : (e.message.isNotEmpty ? e.message : 'Ошибка');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+
+    Future<void> deleteSelected() async {
+      final count = _selectedTaskIds.length;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Удалить задания?'),
+          content: Text('Будет удалено: $count'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+              ),
+              child: const Text('Удалить'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      try {
+        final ids = _selectedTaskIds.toList(growable: false);
+        for (final id in ids) {
+          await ref.read(adminTaskActionsControllerProvider.notifier).delete(id);
+        }
+
+        if (!mounted) return;
+        _clearSelection();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Удалено: $count')),
+        );
+      } on AppError catch (e) {
+        _handleBulkError(e);
+      }
+    }
+
+    Future<void> deactivateSelected() async {
+      final count = _selectedTaskIds.length;
+      try {
+        final ids = _selectedTaskIds.toList(growable: false);
+        for (final id in ids) {
+          await ref.read(adminTaskActionsControllerProvider.notifier).deactivate(id);
+        }
+
+        if (!mounted) return;
+        _clearSelection();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Выключено: $count')),
+        );
+      } on AppError catch (e) {
+        _handleBulkError(e);
+      }
+    }
+
+    Future<void> activateSelected() async {
+      final count = _selectedTaskIds.length;
+      try {
+        final ids = _selectedTaskIds.toList(growable: false);
+        for (final id in ids) {
+          await ref.read(adminTaskActionsControllerProvider.notifier).activate(id);
+        }
+
+        if (!mounted) return;
+        _clearSelection();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Включено: $count')),
+        );
+      } on AppError catch (e) {
+        _handleBulkError(e);
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Задания (админ)'),
+        title: Text(
+          hasSelection ? 'Выбрано: ${_selectedTaskIds.length}' : 'Задания (админ)',
+        ),
+        leading: hasSelection
+            ? IconButton(
+                tooltip: 'Снять выделение',
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              )
+            : null,
         actions: [
-          IconButton(
-            tooltip: 'Создать',
-            onPressed: () => context.go('${AppRoutes.adminTasks}/new'),
-            icon: const Icon(Icons.add),
-          ),
+          if (hasSelection) ...[
+            IconButton(
+              tooltip: 'Включить выбранные',
+              icon: const Icon(Icons.play_arrow_outlined),
+              onPressed: activateSelected,
+            ),
+            IconButton(
+              tooltip: 'Выключить выбранные',
+              icon: const Icon(Icons.block_outlined),
+              onPressed: deactivateSelected,
+            ),
+            IconButton(
+              tooltip: 'Удалить выбранные',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: deleteSelected,
+            ),
+          ] else
+            IconButton(
+              tooltip: 'Создать',
+              onPressed: () => context.go('${AppRoutes.adminTasks}/new'),
+              icon: const Icon(Icons.add),
+            ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('${AppRoutes.adminTasks}/new'),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: hasSelection
+          ? FloatingActionButton.extended(
+              onPressed: deactivateSelected,
+              icon: const Icon(Icons.block_outlined),
+              label: Text('Выключить (${_selectedTaskIds.length})'),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -120,10 +276,12 @@ class AdminTasksScreen extends ConsumerWidget {
 
                       return _TaskAdminCard(
                         title: t.title,
-                        category: t.category,
+                        category: localizeTaskCategory(t.category),
                         pointsReward: t.pointsReward,
                         isActive: t.isActive,
                         isLoading: isLoading,
+                        isSelected: _selectedTaskIds.contains(t.id),
+                        onToggleSelected: () => _toggleSelected(t.id),
                         onEdit: () => context.go(
                             '${AppRoutes.adminTasks}/${t.id}/edit'),
                         onDeactivate: t.isActive
@@ -179,13 +337,17 @@ class AdminTasksScreen extends ConsumerWidget {
                       await ref
                           .read(adminTasksListProvider.notifier)
                           .handleAppError(appErr);
-                      if (context.mounted) context.go(AppRoutes.register);
+                      if (!mounted || _didRedirect) return;
+                      _didRedirect = true;
+                      context.go(AppRoutes.register);
                     });
                   }
 
                   if (appErr.code == 'NO_CHURCH') {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (context.mounted) context.go(AppRoutes.church);
+                      if (!mounted || _didRedirect) return;
+                      _didRedirect = true;
+                      context.go(AppRoutes.church);
                     });
                   }
 
@@ -218,6 +380,8 @@ class _TaskAdminCard extends StatelessWidget {
     required this.pointsReward,
     required this.isActive,
     required this.isLoading,
+    required this.isSelected,
+    required this.onToggleSelected,
     required this.onEdit,
     required this.onDeactivate,
   });
@@ -227,6 +391,8 @@ class _TaskAdminCard extends StatelessWidget {
   final int pointsReward;
   final bool isActive;
   final bool isLoading;
+  final bool isSelected;
+  final VoidCallback onToggleSelected;
   final VoidCallback onEdit;
   final VoidCallback? onDeactivate;
 
@@ -235,64 +401,87 @@ class _TaskAdminCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w800),
+      color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onToggleSelected,
+        onLongPress: onToggleSelected,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Checkbox(
+                    value: isSelected,
+                    onChanged: (_) => onToggleSelected(),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _Badge(
-                  text: isActive ? 'Активно' : 'Выключено',
-                  color: isActive
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: isActive ? Colors.green : Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _Badge(
+                    text: isActive ? 'Активно' : 'Выключено',
+                    color: isActive
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             const SizedBox(height: 8),
             Row(
               children: [
-                _Chip(text: category.isEmpty ? 'Без категории' : category),
+                _Chip(
+                  text: category.isEmpty
+                      ? 'Без категории'
+                      : localizeTaskCategory(category),
+                ),
                 const SizedBox(width: 8),
                 _Chip(text: '+$pointsReward очков'),
               ],
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: isLoading ? null : onEdit,
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Редактировать'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Редактировать'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: isLoading ? null : onDeactivate,
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.block_outlined),
-                    label: Text(isLoading ? '...' : 'Выключить'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: isLoading ? null : onDeactivate,
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.block_outlined),
+                      label: Text(isLoading ? '...' : 'Выключить'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

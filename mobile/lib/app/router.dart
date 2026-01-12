@@ -97,6 +97,98 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: AppRoutes.bible,
+            builder: (context, state) => const BibleBooksScreen(),
+            routes: <RouteBase>[
+              // Static routes must be above dynamic ':bookId/:chapter'.
+              GoRoute(
+                path: 'search',
+                builder: (context, state) => const BibleSearchScreen(),
+              ),
+              GoRoute(
+                path: 'search-all',
+                builder: (context, state) {
+                  String query = '';
+                  List<BibleSearchHit> initial = const [];
+
+                  final extra = state.extra;
+                  if (extra is Map) {
+                    final qAny = extra['query'];
+                    if (qAny is String) query = qAny;
+                    final initAny = extra['initialResults'];
+                    if (initAny is List) {
+                      initial = initAny.whereType<BibleSearchHit>().toList();
+                    }
+                  }
+
+                  return BibleSearchAllScreen(
+                    query: query,
+                    initialResults: initial,
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':bookId/:chapter',
+                builder: (context, state) {
+                  final bookId = state.pathParameters['bookId']!;
+                  final chapter = int.parse(state.pathParameters['chapter']!);
+
+                  String bookName = bookId;
+                  int? maxChapters;
+
+                  final extra = state.extra;
+                  if (extra is Map) {
+                    final nameAny = extra['bookName'];
+                    if (nameAny is String && nameAny.trim().isNotEmpty) {
+                      bookName = nameAny;
+                    }
+                    final maxAny = extra['maxChapters'];
+                    if (maxAny is int) {
+                      maxChapters = maxAny;
+                    } else if (maxAny is String) {
+                      maxChapters = int.tryParse(maxAny);
+                    }
+                  }
+
+                  int? highlightVerse;
+                  int? highlightToVerse;
+                  String? highlightQuery;
+                  final extraHv = state.extra;
+                  if (extraHv is Map) {
+                    final hvAny = extraHv['highlightVerse'];
+                    if (hvAny is int) {
+                      highlightVerse = hvAny;
+                    } else if (hvAny is String) {
+                      highlightVerse = int.tryParse(hvAny);
+                    }
+
+                    final htvAny = extraHv['highlightToVerse'];
+                    if (htvAny is int) {
+                      highlightToVerse = htvAny;
+                    } else if (htvAny is String) {
+                      highlightToVerse = int.tryParse(htvAny);
+                    }
+
+                    final hqAny = extraHv['highlightQuery'];
+                    if (hqAny is String && hqAny.trim().isNotEmpty) {
+                      highlightQuery = hqAny.trim();
+                    }
+                  }
+
+                  return BibleChapterScreen(
+                    bookId: bookId,
+                    bookName: bookName,
+                    initialChapter: chapter,
+                    maxChapters: maxChapters,
+                    highlightVerse: highlightVerse,
+                    highlightToVerse: highlightToVerse,
+                    highlightQuery: highlightQuery,
+                  );
+                },
+              ),
+            ],
+          ),
+          GoRoute(
             path: AppRoutes.shop,
             builder: (context, state) => const ShopScreen(),
           ),
@@ -176,83 +268,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.forbidden,
         builder: (context, state) => const NoAccessScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.bible,
-        builder: (context, state) => const BibleBooksScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.bibleSearch,
-        builder: (context, state) => const BibleSearchScreen(),
-      ),
-      GoRoute(
-        path: AppRoutes.bibleSearchAll,
-        builder: (context, state) {
-          String query = '';
-          List<BibleSearchHit> initial = const [];
-
-          final extra = state.extra;
-          if (extra is Map) {
-            final qAny = extra['query'];
-            if (qAny is String) query = qAny;
-            final initAny = extra['initialResults'];
-            if (initAny is List) {
-              initial = initAny.whereType<BibleSearchHit>().toList();
-            }
-          }
-
-          return BibleSearchAllScreen(query: query, initialResults: initial);
-        },
-      ),
-      GoRoute(
-        path: AppRoutes.bibleChapter,
-        builder: (context, state) {
-          final bookId = state.pathParameters['bookId']!;
-          final chapter = int.parse(state.pathParameters['chapter']!);
-
-          String bookName = bookId;
-          int? maxChapters;
-
-          final extra = state.extra;
-          if (extra is Map) {
-            final nameAny = extra['bookName'];
-            if (nameAny is String && nameAny.trim().isNotEmpty) {
-              bookName = nameAny;
-            }
-            final maxAny = extra['maxChapters'];
-            if (maxAny is int) {
-              maxChapters = maxAny;
-            } else if (maxAny is String) {
-              maxChapters = int.tryParse(maxAny);
-            }
-          }
-
-          int? highlightVerse;
-          String? highlightQuery;
-          final extraHv = state.extra;
-          if (extraHv is Map) {
-            final hvAny = extraHv['highlightVerse'];
-            if (hvAny is int) {
-              highlightVerse = hvAny;
-            } else if (hvAny is String) {
-              highlightVerse = int.tryParse(hvAny);
-            }
-
-            final hqAny = extraHv['highlightQuery'];
-            if (hqAny is String && hqAny.trim().isNotEmpty) {
-              highlightQuery = hqAny.trim();
-            }
-          }
-
-          return BibleChapterScreen(
-            bookId: bookId,
-            bookName: bookName,
-            initialChapter: chapter,
-            maxChapters: maxChapters,
-            highlightVerse: highlightVerse,
-            highlightQuery: highlightQuery,
-          );
-        },
-      ),
     ],
     redirect: (context, state) {
       final loc = state.matchedLocation;
@@ -309,6 +324,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         if (loc == AppRoutes.superadmin) return null;
 
         final isInShell = loc.startsWith(AppRoutes.tasks) ||
+            loc.startsWith(AppRoutes.bible) ||
             loc.startsWith(AppRoutes.shop) ||
             loc.startsWith(AppRoutes.inventory) ||
             loc.startsWith(AppRoutes.stats) ||
@@ -562,7 +578,7 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
   }
 }
 
-final class _AppShell extends ConsumerWidget {
+final class _AppShell extends ConsumerStatefulWidget {
   const _AppShell({
     required this.location,
     required this.child,
@@ -570,6 +586,13 @@ final class _AppShell extends ConsumerWidget {
 
   final String location;
   final Widget child;
+
+  @override
+  ConsumerState<_AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<_AppShell> {
+  late final PageController _pageController;
 
   List<String> _tabs({required bool isAdmin}) {
     // Order matters: index in this list == NavigationBar index.
@@ -595,7 +618,40 @@ final class _AppShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    final isAdmin = ref.read(isAdminProvider);
+    final tabs = _tabs(isAdmin: isAdmin);
+    final initialIndex = _indexFromLocation(widget.location, tabs: tabs);
+    _pageController = PageController(initialPage: initialIndex);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final isAdmin = ref.read(isAdminProvider);
+    final tabs = _tabs(isAdmin: isAdmin);
+    final newIndex = _indexFromLocation(widget.location, tabs: tabs);
+    final atRoot = tabs.contains(widget.location);
+    if (atRoot && _pageController.hasClients) {
+      final currentPage = _pageController.page?.round() ?? _pageController.initialPage;
+      if (currentPage != newIndex) {
+        _pageController.jumpToPage(newIndex);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final location = widget.location;
+    final child = widget.child;
+
     debugPrint('Shell build location=$location');
     final isAdmin = ref.watch(isAdminProvider);
     final tabs = _tabs(isAdmin: isAdmin);
@@ -630,17 +686,50 @@ final class _AppShell extends ConsumerWidget {
         location.startsWith(AppRoutes.superadmin) ||
         location.startsWith('/bible/');
 
+    final atRoot = tabs.contains(location);
+
+    final body = (!hideBottomBar && atRoot)
+        ? PageView(
+            controller: _pageController,
+            onPageChanged: (idx) {
+              final target = _locationFromIndex(idx, tabs: tabs);
+              if (target != location) {
+                context.go(target);
+              }
+            },
+            children: const [
+              TasksScreen(),
+              BibleBooksScreen(),
+              MySubmissionsScreen(),
+            ],
+          )
+        : child;
+
     return Scaffold(
-      body: child,
+      body: body,
       bottomNavigationBar: hideBottomBar
           ? null
           : NavigationBar(
               selectedIndex: currentIndex,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               onDestinationSelected: (idx) {
-                final target = _locationFromIndex(idx, tabs: tabs);
-                if (target == location) return;
-                context.go(target);
+                if (!atRoot) {
+                  final target = _locationFromIndex(idx, tabs: tabs);
+                  if (target != location) context.go(target);
+                  return;
+                }
+                if (_pageController.hasClients) {                  final distance = (currentIndex - idx).abs();
+                  if (distance <= 1) {
+                    _pageController.animateToPage(
+                      idx,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOut,
+                    );
+                  } else {
+                    // Jump for non-adjacent to avoid passing through middle page visually.
+                    _pageController.jumpToPage(idx);
+                  }
+                }
               },
               destinations: destinations,
             ),

@@ -23,6 +23,7 @@ enum TaskCategory {
   SERVICE
   COMMUNITY
   CREATIVITY
+  REFLECTION
   OTHER
 }
 

@@ -8,16 +8,28 @@ import '../../avatar/presentation/avatar_thumb_image.dart';
 import '../../../core/errors/app_error.dart';
 import '../../tasks/tasks_providers.dart';
 import '../../auth/user_session_provider.dart';
+import '../../../core/ui/task_category_i18n.dart';
+import '../../../core/ui/bible_refs.dart';
 
-class TasksScreen extends ConsumerWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends ConsumerState<TasksScreen> {
+  bool _didRedirect = false;
+
+  @override
+  Widget build(BuildContext context) {
     debugPrint('TasksScreen build');
     final async = ref.watch(tasksListProvider);
 
     Future<void> onRefresh() async {
+      // RefreshIndicator can complete after this widget is disposed (e.g. user
+      // navigated away while the refresh Future was running).
+      if (!mounted) return;
       await ref.read(tasksListProvider.notifier).refresh();
     }
 
@@ -45,8 +57,8 @@ class TasksScreen extends ConsumerWidget {
               final t = items[i];
               return _TaskCard(
                 title: t.title,
-                description: t.description,
-                category: t.category,
+                description: stripBibleRefsFromDescription(t.description),
+                category: localizeTaskCategory(t.category),
                 pointsReward: t.pointsReward,
                 onDetails: () {
                   context.go('${AppRoutes.tasks}/${t.id}');
@@ -63,13 +75,17 @@ class TasksScreen extends ConsumerWidget {
         // Handle special cases
         if (err is AppError && err.code == 'NO_CHURCH') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.church);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.church);
           });
         }
 
         if (err is AppError && err.code == 'UNAUTHORIZED') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.register);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.register);
           });
         }
 
@@ -114,6 +130,7 @@ class _AvatarLeading extends ConsumerWidget {
     );
   }
 }
+
 
 class _TaskCard extends StatelessWidget {
   const _TaskCard({

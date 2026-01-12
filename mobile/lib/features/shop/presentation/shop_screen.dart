@@ -7,17 +7,26 @@ import '../../../core/errors/app_error.dart';
 import '../models/shop_view_item.dart';
 import '../shop_providers.dart';
 
-class ShopScreen extends ConsumerWidget {
+class ShopScreen extends ConsumerStatefulWidget {
   const ShopScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShopScreen> createState() => _ShopScreenState();
+}
+
+class _ShopScreenState extends ConsumerState<ShopScreen> {
+  bool _didRedirect = false;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     final balance = ref.watch(balanceProvider);
     final async = ref.watch(shopViewItemsProvider);
 
     Future<void> onRefresh() async {
+      // RefreshIndicator can complete after this widget is disposed.
+      if (!mounted) return;
       ref.invalidate(shopViewItemsProvider);
       ref.invalidate(serverShopItemsProvider);
       ref.invalidate(ownedKeysProvider);
@@ -63,13 +72,17 @@ class ShopScreen extends ConsumerWidget {
       error: (err, st) {
         if (err is AppError && err.code == 'NO_CHURCH') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.church);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.church);
           });
         }
 
         if (err is AppError && err.code == 'UNAUTHORIZED') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.register);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.register);
           });
         }
 

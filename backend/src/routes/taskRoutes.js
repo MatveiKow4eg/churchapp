@@ -6,7 +6,7 @@ const { requireAdmin } = require('../middleware/roleMiddleware');
 const { validate } = require('../middleware/validate');
 const { listTasksQuerySchema, createTaskBodySchema, updateTaskSchema } = require('../validators/taskSchemas');
 const { cuidSchema } = require('../validators/commonSchemas');
-const { listTasks, getTaskById, createTask, updateTask, deactivateTask } = require('../controllers/taskController');
+const { listTasks, getTaskById, createTask, updateTask, deactivateTask, deleteTask } = require('../controllers/taskController');
 
 const taskRouter = express.Router();
 
@@ -40,6 +40,15 @@ taskRouter.patch(
   requireAdmin,
   validate({ params: z.object({ id: cuidSchema }), body: updateTaskSchema }),
   updateTask
+);
+
+// DELETE /tasks/:id (admin only)
+taskRouter.delete(
+  '/:id',
+  requireAuth,
+  requireAdmin,
+  validate({ params: z.object({ id: cuidSchema }) }),
+  deleteTask
 );
 
 // GET /tasks/ping (debug)

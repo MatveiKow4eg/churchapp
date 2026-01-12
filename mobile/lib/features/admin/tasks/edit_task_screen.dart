@@ -36,6 +36,7 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
     'SERVICE',
     'COMMUNITY',
     'CREATIVITY',
+    'REFLECTION',
     'OTHER',
   ];
 
@@ -188,11 +189,12 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
                   DropdownButtonFormField<String>(
                     value: _category,
                     items: const [
-                      DropdownMenuItem(value: 'SPIRITUAL', child: Text('SPIRITUAL')),
-                      DropdownMenuItem(value: 'SERVICE', child: Text('SERVICE')),
-                      DropdownMenuItem(value: 'COMMUNITY', child: Text('COMMUNITY')),
-                      DropdownMenuItem(value: 'CREATIVITY', child: Text('CREATIVITY')),
-                      DropdownMenuItem(value: 'OTHER', child: Text('OTHER')),
+                      DropdownMenuItem(value: 'SPIRITUAL', child: Text('Духовное')),
+                      DropdownMenuItem(value: 'SERVICE', child: Text('Служение / помощь')),
+                      DropdownMenuItem(value: 'COMMUNITY', child: Text('Сообщество / общение')),
+                      DropdownMenuItem(value: 'CREATIVITY', child: Text('Творчество')),
+                      DropdownMenuItem(value: 'REFLECTION', child: Text('Размышление / эссе')),
+                      DropdownMenuItem(value: 'OTHER', child: Text('Другое')),
                     ],
                     onChanged: _saving
                         ? null

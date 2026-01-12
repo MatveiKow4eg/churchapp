@@ -34,6 +34,36 @@ class AdminTaskActionsController extends Notifier<Set<String>> {
     }
   }
 
+  Future<void> delete(String taskId) async {
+    _setLoading(taskId, true);
+
+    try {
+      final repo = ref.read(tasksRepositoryProvider);
+      await repo.deleteTask(taskId);
+      await ref.read(adminTasksListProvider.notifier).refresh();
+    } on AppError catch (e) {
+      await _handleSessionErrors(e);
+      rethrow;
+    } finally {
+      _setLoading(taskId, false);
+    }
+  }
+
+  Future<void> activate(String taskId) async {
+    _setLoading(taskId, true);
+
+    try {
+      final repo = ref.read(tasksRepositoryProvider);
+      await repo.updateTask(taskId, patch: {'isActive': true});
+      await ref.read(adminTasksListProvider.notifier).refresh();
+    } on AppError catch (e) {
+      await _handleSessionErrors(e);
+      rethrow;
+    } finally {
+      _setLoading(taskId, false);
+    }
+  }
+
   void _setLoading(String taskId, bool value) {
     if (value) {
       state = {...state, taskId};

@@ -5,6 +5,7 @@ const taskCategorySchema = z.enum([
   'SERVICE',
   'COMMUNITY',
   'CREATIVITY',
+  'REFLECTION',
   'OTHER'
 ]);
 

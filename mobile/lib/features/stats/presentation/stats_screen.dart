@@ -6,16 +6,26 @@ import '../../../app/router.dart';
 import '../../../core/errors/app_error.dart';
 import '../models/user_stats_model.dart';
 import '../stats_providers.dart';
+import '../../../core/ui/task_category_i18n.dart';
 
-class StatsScreen extends ConsumerWidget {
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends ConsumerState<StatsScreen> {
+  bool _didRedirect = false;
+
+  @override
+  Widget build(BuildContext context) {
     final month = ref.watch(selectedStatsMonthProvider);
     final async = ref.watch(myStatsProvider);
 
     Future<void> onRefresh() async {
+      // RefreshIndicator may complete after this widget is disposed.
+      if (!mounted) return;
       await ref.read(myStatsProvider.notifier).refresh();
     }
 
@@ -85,13 +95,17 @@ class StatsScreen extends ConsumerWidget {
       error: (err, st) {
         if (err is AppError && err.code == 'NO_CHURCH') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.church);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.church);
           });
         }
 
         if (err is AppError && err.code == 'UNAUTHORIZED') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (context.mounted) context.go(AppRoutes.register);
+            if (!mounted || _didRedirect) return;
+            _didRedirect = true;
+            context.go(AppRoutes.register);
           });
         }
 
@@ -303,7 +317,9 @@ class _CategoryRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              category.category.isEmpty ? '—' : category.category,
+              category.category.isEmpty
+                  ? '—'
+                  : localizeTaskCategory(category.category),
               style: theme.textTheme.bodyMedium,
             ),
           ),

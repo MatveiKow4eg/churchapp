@@ -16,6 +16,9 @@ async function register(req, res, next) {
   try {
     const { firstName, lastName, age, city, email, password } = req.body;
 
+    // Normalize email to keep it case-insensitive across register/login.
+    const normalizedEmail = (email ?? '').trim().toLowerCase();
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
@@ -24,7 +27,7 @@ async function register(req, res, next) {
         lastName,
         age,
         city,
-        email,
+        email: normalizedEmail,
         passwordHash,
         role: 'USER',
         status: 'ACTIVE',

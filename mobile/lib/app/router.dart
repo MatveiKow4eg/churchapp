@@ -264,12 +264,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // 1) LOADING gate: splash is used ONLY as loading screen.
       // If anything required for routing is still resolving, force /splash.
-      if (baseUrlAsync.isLoading || tokenAsync.isLoading || userAsync.isLoading) {
+      //
+      // NOTE: `currentUserProvider` can legitimately stay in loading state when
+      // there is no token/baseUrl (because it awaits those gates). In that case
+      // we must NOT force /splash forever.
+      final baseUrlResolved = !baseUrlAsync.isLoading;
+      final tokenResolved = !tokenAsync.isLoading;
+      final baseUrl = baseUrlAsync.valueOrNull ?? '';
+      final token = tokenAsync.valueOrNull;
+
+      final userNeedsToBeResolved = baseUrlResolved && tokenResolved && baseUrl.isNotEmpty && (token?.isNotEmpty ?? false);
+
+      if (baseUrlAsync.isLoading || tokenAsync.isLoading || (userNeedsToBeResolved && userAsync.isLoading)) {
         return loc == AppRoutes.splash ? null : AppRoutes.splash;
       }
 
       // 2) BaseUrl gate
-      final baseUrl = baseUrlAsync.valueOrNull ?? '';
       if (baseUrl.isEmpty) {
         // Server setup must be reachable only in "no baseUrl" state.
         return loc == AppRoutes.server ? null : AppRoutes.server;
@@ -279,7 +289,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (loc == AppRoutes.server) return AppRoutes.splash;
 
       // 3) Auth gate (token + user)
-      final token = tokenAsync.valueOrNull;
       final user = userAsync.valueOrNull;
 
       // If token is missing OR session resolved as unauthenticated -> /login.

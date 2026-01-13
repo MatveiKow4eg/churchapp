@@ -4,6 +4,7 @@ import '../../../core/errors/app_error.dart';
 import '../../auth/session_providers.dart';
 import '../../submissions/create_submission_controller.dart';
 import '../../submissions/models/submission_action_result.dart';
+import '../../profile/profile_providers.dart';
 import 'pending_submissions_providers.dart';
 
 final submissionActionsControllerProvider =
@@ -31,6 +32,9 @@ class SubmissionActionsController extends Notifier<Set<String>> {
 
       // Remove item from pending list by refreshing.
       await ref.read(pendingSubmissionsProvider.notifier).refresh();
+
+      // XP/level progress can change after approval.
+      ref.invalidate(myXpStatusProvider);
 
       return res;
     } on AppError catch (e) {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/app_error.dart';
 import '../../core/providers/providers.dart';
 import '../../core/api/api_client.dart';
+import 'data/xp_status.dart';
 import '../auth/session_providers.dart';
 import '../auth/user_session_provider.dart';
 import '../auth/models/user_model.dart';
@@ -159,6 +160,15 @@ class SettingsRepository {
   SettingsRepository({required ApiClient apiClient}) : _apiClient = apiClient;
 
   final ApiClient _apiClient;
+
+  Future<XpStatus> fetchMyXp() async {
+    try {
+      final resp = await _apiClient.dio.get<Map<String, dynamic>>('/me/xp');
+      return XpStatus.fromJson(resp.data ?? const <String, dynamic>{});
+    } catch (e) {
+      throw ApiClient.mapDioError(e);
+    }
+  }
 
   Future<void> updateProfile({
     required String firstName,

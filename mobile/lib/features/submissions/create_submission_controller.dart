@@ -4,6 +4,7 @@ import '../../core/providers/providers.dart';
 import '../../core/errors/app_error.dart';
 import '../auth/session_providers.dart';
 import '../tasks/tasks_providers.dart';
+import '../profile/profile_providers.dart';
 import 'models/submission_model.dart';
 import 'my_submissions_providers.dart';
 import 'submissions_repository.dart';
@@ -39,6 +40,7 @@ class CreateSubmissionController
       // This hides the task from "Tasks" when it becomes PENDING.
       ref.invalidate(mySubmissionsListProvider);
       ref.invalidate(tasksListProvider);
+      ref.invalidate(myXpStatusProvider);
 
       state = AsyncData(submission);
       return submission;

@@ -57,9 +57,9 @@ class AdminPanelScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.bar_chart_outlined),
             title: const Text('Статистика церкви'),
-            subtitle: const Text('Скоро'),
-            enabled: false,
-            trailing: const Text('Скоро'),
+            subtitle: const Text('Отчёт по вашей церкви за месяц'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.go(AppRoutes.adminChurchStats),
           ),
           if (isSuperadmin) ...[
             const Divider(height: 1),

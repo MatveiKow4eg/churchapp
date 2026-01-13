@@ -7,6 +7,7 @@ import '../../../core/errors/app_error.dart';
 import '../models/user_stats_model.dart';
 import '../stats_providers.dart';
 import '../../../core/ui/task_category_i18n.dart';
+import 'xp_progress_card.dart';
 
 class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
@@ -48,6 +49,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const XpProgressCard(),
+              const SizedBox(height: 16),
               _MonthSelector(
                 title: _prettyMonth(stats.month),
                 onPrev: prevMonth,

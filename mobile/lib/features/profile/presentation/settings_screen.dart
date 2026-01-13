@@ -7,6 +7,7 @@ import '../../auth/user_session_provider.dart';
 import '../../auth/session_providers.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../settings_controller.dart';
+import '../profile_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -28,6 +29,7 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const SizedBox(height: 16),
           _SectionHeader(title: 'Редактировать профиль'),
           const SizedBox(height: 8),
           ListTile(
@@ -128,6 +130,7 @@ final _currentChurchNameProvider = Provider<String>((ref) {
   // Если позже добавим в UserModel поле churchName (или church), можно заменить.
   return '...';
 });
+
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title});

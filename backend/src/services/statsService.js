@@ -197,7 +197,9 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       select: {
         id: true,
         firstName: true,
-        lastName: true
+        lastName: true,
+        avatarConfig: true,
+        avatarUpdatedAt: true
       }
     });
 
@@ -234,15 +236,36 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       }));
   }
 
+  // Total members (all statuses) — for admin stats footer.
+  const totalMembersCount = await prisma.user.count({
+    where: { churchId }
+  });
+
+  // All church members list (for admin view). Keep it reasonably small by ordering.
+  const members = await prisma.user.findMany({
+    where: { churchId },
+    orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      status: true,
+      avatarConfig: true,
+      avatarUpdatedAt: true
+    }
+  });
+
   return {
     month: monthYYYYMM,
     activeUsersCount,
+    totalMembersCount,
     approvedSubmissionsCount,
     pendingSubmissionsCount,
     totalPointsEarned,
     totalPointsSpent,
     topUsers,
-    topTasks
+    topTasks,
+    members
   };
 }
 

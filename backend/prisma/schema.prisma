@@ -27,6 +27,21 @@ enum TaskCategory {
   OTHER
 }
 
+enum XpCategory {
+  SPIRITUAL
+  SERVICE
+  COMMUNITY
+  CREATIVITY
+  REFLECTION
+  OTHER
+}
+
+
+enum XpSource {
+  TASK
+  STREAK
+}
+
 enum SubmissionStatus {
   PENDING
   APPROVED
@@ -93,6 +108,33 @@ model User {
 
   @@index([churchId])
   @@index([lastName])
+
+  // --- XP / Level system ---
+  level               Int      @default(1)
+  levelXp             Int      @default(0)
+
+  // XP per category (current level, resets on level-up)
+  xpSpiritual         Int      @default(0)
+  xpService           Int      @default(0)
+  xpCommunity         Int      @default(0)
+  xpCreativity        Int      @default(0)
+  xpReflection        Int      @default(0)
+  xpOther             Int      @default(0)
+
+  // Streak tracking (hidden bonus logic)
+  streakDays          Int      @default(0)
+  lastTaskCompletedAt DateTime?
+
+  // Lifetime stats (never reset)
+  lifetimeXp          Int      @default(0)
+  lifetimeXpSpiritual Int      @default(0)
+  lifetimeXpService   Int      @default(0)
+  lifetimeXpCommunity Int      @default(0)
+  lifetimeXpCreativity Int     @default(0)
+  lifetimeXpReflection Int     @default(0)
+  lifetimeXpOther     Int      @default(0)
+
+  xpLedger XpLedger[]
 }
 
 model Task {
@@ -119,6 +161,8 @@ model Task {
   @@index([churchId])
   @@index([isActive])
   @@index([category])
+
+  xpLedger XpLedger[]
 }
 
 model Submission {
@@ -153,6 +197,9 @@ model Submission {
 
   // allow multiple attempts per (userId, taskId)
   @@index([userId, taskId, createdAt])
+
+  // XP applied marker to prevent double-awards
+  xpAppliedAt DateTime?
 }
 
 model PointsLedger {
@@ -212,4 +259,28 @@ model Inventory {
   @@unique([userId, itemKey])
   @@index([userId])
   @@index([itemKey])
+}
+
+model XpLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String?
+
+  // how much was granted after soft-cap (the actual applied XP)
+  xpGranted Int
+
+  // optional: raw base XP before soft-cap (useful for debug)
+  xpBase    Int?
+
+  category  XpCategory
+  source    XpSource
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([userId, source, createdAt])
+  @@index([taskId])
 }

@@ -1,4 +1,5 @@
 const { prisma } = require('../db/prisma');
+const { awardTaskXp } = require('./xpService');
 
 class HttpError extends Error {
   constructor(status, code, message, details) {
@@ -235,6 +236,7 @@ async function approveSubmission({
         churchId: true,
         taskId: true,
         userId: true,
+        xpAppliedAt: true,
         task: {
           select: {
             id: true,
@@ -311,6 +313,16 @@ async function approveSubmission({
         }
       }
     });
+
+    // Award XP only once per submission approval.
+    if (!submission.xpAppliedAt) {
+      await awardTaskXp({ userId: submission.userId, taskId: submission.taskId, at: new Date(), tx });
+
+      await tx.submission.update({
+        where: { id: submissionId },
+        data: { xpAppliedAt: new Date() }
+      });
+    }
 
     return {
       submission: updatedSubmission,

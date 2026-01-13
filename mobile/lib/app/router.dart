@@ -20,14 +20,13 @@ import '../features/server/presentation/server_setup_screen.dart';
 import '../features/shop/presentation/shop_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/stats/presentation/stats_screen.dart';
+import '../features/admin/church_stats/presentation/church_stats_screen.dart';
 import '../features/submissions/my_submissions_screen.dart';
 import '../features/tasks/presentation/task_details_screen.dart';
 import '../features/tasks/presentation/tasks_screen.dart';
 import '../features/avatar/avatar_providers.dart';
-import '../features/avatar/avatar_setup_provider.dart';
 import '../features/avatar/presentation/avatar_thumb_image.dart';
 import '../features/avatar/presentation/avatar_customize_screen.dart';
-import '../features/avatar/presentation/avatar_setup_screen.dart';
 import '../features/profile/presentation/settings_screen.dart';
 import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/change_password_screen.dart';
@@ -256,6 +255,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
               // Superadmin panel under /admin so it stays inside the shell.
               GoRoute(
+                path: 'church-stats',
+                builder: (context, state) => const ChurchStatsScreen(),
+              ),
+              GoRoute(
                 path: 'superadmin',
                 builder: (context, state) => const SuperAdminPanelScreen(),
               ),
@@ -435,6 +438,7 @@ abstract final class AppRoutes {
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
+  static const adminChurchStats = '/admin/church-stats';
 }
 
 class _InDevelopmentScreen extends StatelessWidget {

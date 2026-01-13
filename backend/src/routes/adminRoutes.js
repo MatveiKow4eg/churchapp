@@ -8,26 +8,10 @@ const { createChurchSchema } = require('../validators/churchSchemas');
 const { prisma } = require('../db/prisma');
 const { createChurch } = require('../services/churchService');
 
-class HttpError extends Error {
-  constructor(status, code, message, details) {
-    super(message);
-    this.status = status;
-    this.code = code;
-    this.details = details;
-  }
-}
-
 const router = express.Router();
 
 // All /admin endpoints require SUPERADMIN
 router.use(requireAuth);
-
-// Debug helper: if you still see 403, check `error.code` in response.
-router.use((req, _res, next) => {
-  // eslint-disable-next-line no-console
-  console.log('[admin] user:', req.user);
-  next();
-});
 
 router.use(requireRole('SUPERADMIN'));
 
@@ -59,6 +43,75 @@ router.get('/churches', async (req, res, next) => {
     });
 
     return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /admin/users
+// Access: SUPERADMIN
+router.get('/users', async (req, res, next) => {
+  try {
+    const items = await prisma.user.findMany({
+      orderBy: [{ createdAt: 'desc' }],
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        churchId: true,
+        createdAt: true,
+        updatedAt: true,
+        avatarUpdatedAt: true,
+        avatarConfig: true
+      }
+    });
+
+    return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// PATCH /admin/users/:id
+// Access: SUPERADMIN
+router.patch('/users/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { role, status, churchId, firstName, lastName } = req.body ?? {};
+
+    const data = {};
+    if (role !== undefined) data.role = role;
+    if (status !== undefined) data.status = status;
+    if (churchId !== undefined) data.churchId = churchId;
+    if (firstName !== undefined) data.firstName = firstName;
+    if (lastName !== undefined) data.lastName = lastName;
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ code: 'BAD_REQUEST', message: 'No fields to update' });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        churchId: true,
+        createdAt: true,
+        updatedAt: true,
+        avatarUpdatedAt: true,
+        avatarConfig: true
+      }
+    });
+
+    return res.json({ user });
   } catch (err) {
     return next(err);
   }

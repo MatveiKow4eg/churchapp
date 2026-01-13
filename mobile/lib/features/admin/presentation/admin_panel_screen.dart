@@ -11,7 +11,7 @@ class AdminPanelScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
-    final isSuperadmin = role == 'SUPERADMIN' || role == 'SUPERADMIN';
+    final isSuperadmin = role == 'SUPERADMIN';
 
     return Scaffold(
       appBar: AppBar(
@@ -69,6 +69,14 @@ class AdminPanelScreen extends ConsumerWidget {
               subtitle: const Text('Создание и список церквей'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.go('${AppRoutes.admin}/superadmin'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.people_alt_outlined),
+              title: const Text('SuperAdmin: пользователи'),
+              subtitle: const Text('Список и редактирование пользователей'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('${AppRoutes.admin}/superadmin-users'),
             ),
           ],
         ],

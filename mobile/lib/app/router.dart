@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../core/providers/providers.dart';
 import '../features/admin/presentation/admin_panel_screen.dart';
 import '../features/superadmin/presentation/superadmin_panel_screen.dart';
+import '../features/superadmin/users/superadmin_users_screen.dart';
 import '../features/admin/presentation/no_access_screen.dart';
 import '../features/admin/presentation/pending_submissions_screen.dart';
 import '../features/admin/tasks/admin_tasks_screen.dart';
@@ -261,6 +262,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'superadmin',
                 builder: (context, state) => const SuperAdminPanelScreen(),
+              ),
+              GoRoute(
+                path: 'superadmin-users',
+                builder: (context, state) => const SuperAdminUsersScreen(),
               ),
             ],
           ),

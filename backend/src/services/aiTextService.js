@@ -41,11 +41,14 @@ function buildPrompt({ text, type }) {
 function cleanModelOutput(s) {
   if (typeof s !== 'string') return '';
 
+  // remove model thinking tags
+  s = s.replace(/<\/?think>/gi, '');
+
   let out = s
-      // normalize common “smart quotes”
-      .replace(/[\u201C\u201D]/g, '"')
-      .replace(/[\u00AB\u00BB]/g, '"')
-      .trim();
+    // normalize common “smart quotes”
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u00AB\u00BB]/g, '"')
+    .trim();
 
   // Remove wrapping quotes repeatedly (model sometimes returns nested quotes)
   for (let i = 0; i < 3; i++) {

@@ -18,8 +18,10 @@ enum AppIconVariant {
   final String label;
   final String assetPath;
 
-  /// Для iOS используются именованные варианты (например, "AppIcon-amber")
-  String get iosIconName => this == main ? 'AppIcon' : 'AppIcon-$id';
+  /// Для iOS нужно передавать *ключ* из Info.plist -> CFBundleAlternateIcons
+  /// (например: "amber", "dark_cyan", ...). Для возврата к основной иконке
+  /// передаётся `null`.
+  String? get iosIconName => this == main ? null : id;
 
   /// Для Android используются activity-alias (например, ".MainActivityAmber")
   String get androidActivityAlias {

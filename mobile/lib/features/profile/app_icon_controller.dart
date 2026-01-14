@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
@@ -21,26 +23,32 @@ class AppIconController extends StateNotifier<AppIconVariant> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedId = prefs.getString(_kAppIconKey);
-      state = AppIconVariant.fromId(savedId);
+      final variant = AppIconVariant.fromId(savedId);
+      state = variant;
+
+      // Не применяем иконку автоматически на iOS при входе в настройки.
+      // На iOS системный диалог показывается при каждой установке alternate icon,
+      // даже если значение не меняется, поэтому делаем это только по явному действию пользователя.
+      if (Platform.isAndroid) {
+        await FlutterDynamicIcon.setAlternateIconName(variant.androidActivityAlias);
+      }
     } catch (e) {
-      // Игнорируем ошибки загрузки
+      // Игнорируем ошибки загрузки/применения
     }
   }
 
   Future<bool> setIcon(AppIconVariant variant) async {
     try {
-      // Устанавливаем иконку
-      // Для iOS передаем имя из Assets (AppIcon, AppIcon-amber и т.д.)
-      // Для Android используется activity-alias из AndroidManifest
-      if (variant == AppIconVariant.main) {
-        // Возвращаем к дефолтной иконке
-        await FlutterDynamicIcon.setAlternateIconName(null);
+      // iOS: передаём ключ из Info.plist -> CFBundleAlternateIcons ("amber", ...)
+      // Android: передаём имя activity-alias из AndroidManifest (".MainActivityAmber", ...)
+      if (Platform.isIOS) {
+        await FlutterDynamicIcon.setAlternateIconName(variant.iosIconName);
+      } else if (Platform.isAndroid) {
+        await FlutterDynamicIcon.setAlternateIconName(variant.androidActivityAlias);
       } else {
-        // Устанавливаем альтернативную иконку
-        await FlutterDynamicIcon.setAlternateIconName(variant.id);
+        // На остальных платформах просто меняем состояние/сохранение.
       }
 
-      // Сохраняем выбор
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kAppIconKey, variant.id);
 

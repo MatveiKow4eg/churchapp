@@ -109,9 +109,88 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Text(
-                            stripBibleRefsFromDescription(task.description),
-                            style: Theme.of(context).textTheme.bodyLarge,
+                          Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 36),
+                                child: Text(
+                                  stripBibleRefsFromDescription(task.description),
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    final fullText =
+                                        stripBibleRefsFromDescription(task.description);
+
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      showDragHandle: true,
+                                      backgroundColor:
+                                          Theme.of(context).colorScheme.surface,
+                                      builder: (sheetContext) {
+                                        return Material(
+                                          color: Theme.of(sheetContext)
+                                              .colorScheme
+                                              .surface,
+                                          child: SafeArea(
+                                            child: Padding(
+                                              padding: const EdgeInsets.fromLTRB(
+                                                  16, 12, 16, 16),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  Text(
+                                                    'Описание задания',
+                                                    style: Theme.of(sheetContext)
+                                                        .textTheme
+                                                        .titleLarge
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Flexible(
+                                                    child:
+                                                        SingleChildScrollView(
+                                                      child: Text(
+                                                        fullText,
+                                                        style: Theme.of(
+                                                                sheetContext)
+                                                            .textTheme
+                                                            .bodyLarge,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(
+                                      Icons.open_in_full,
+                                      size: 18,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
                           Builder(
@@ -169,6 +248,13 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton(
+                      style: ButtonStyle(
+                        // Disable any pressed/hover/focus overlay ("halo")
+                        overlayColor:
+                            WidgetStateProperty.all(Colors.transparent),
+                        // Disable ripple splash entirely.
+                        splashFactory: NoSplash.splashFactory,
+                      ),
                       onPressed: () => _openSubmitSheet(
                         context,
                         taskCategory: task.category,

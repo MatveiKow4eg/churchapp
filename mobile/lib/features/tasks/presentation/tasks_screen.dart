@@ -152,53 +152,57 @@ class _TaskCard extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onDetails,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '+$pointsReward очков',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.primary,
+                  const SizedBox(width: 12),
+                  Text(
+                    '+$pointsReward очков',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              description,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _Badge(text: category.isEmpty ? 'Без категории' : category),
-                const Spacer(),
-                TextButton(
-                  onPressed: onDetails,
-                  child: const Text('Подробнее'),
+              const SizedBox(height: 10),
+              Text(
+                description,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _Badge(text: category.isEmpty ? 'Без категории' : category),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: onDetails,
+                    child: const Text('Подробнее'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

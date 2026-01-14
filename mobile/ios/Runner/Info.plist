@@ -57,71 +57,92 @@
 		<dict>
 			<key>amber</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-amber</string>
+				<!-- Use CFBundleIconFiles for maximum compatibility with App Store validation -->
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-amber</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>dark_cyan</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-dark_cyan</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-dark_cyan</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>dark_gold</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-dark_gold</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-dark_gold</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>dark_purple</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-dark_purple</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-dark_purple</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>emerald</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-emerald</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-emerald</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>indigo</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-indigo</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-indigo</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>mono</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-mono</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-mono</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>pink</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-pink</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-pink</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>red</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-red</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-red</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
 			<key>sky</key>
 			<dict>
-				<key>CFBundleIconName</key>
-				<string>AppIcon-sky</string>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-sky</string>
+				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>

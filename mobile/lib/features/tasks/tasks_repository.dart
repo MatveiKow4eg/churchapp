@@ -9,6 +9,62 @@ class TasksRepository {
 
   final ApiClient _apiClient;
 
+  Future<Map<String, String>> improveTaskText({
+    required String title,
+    required String description,
+  }) async {
+    try {
+      final resp = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/tasks/improve-text',
+        data: {
+          'title': title.trim(),
+          'description': description.trim(),
+        },
+      );
+
+      final data = resp.data;
+      if (data == null) {
+        throw const AppError(code: 'invalid_response', message: 'Empty response');
+      }
+
+      final t = data['title'];
+      final d = data['description'];
+      if (t is! String || d is! String) {
+        throw const AppError(
+          code: 'invalid_response',
+          message: 'Invalid response format',
+        );
+      }
+
+      return {
+        'title': t,
+        'description': d,
+      };
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      if (status == 409 && data is Map) {
+        final err = data['error'];
+        if (err is Map && (err['code']?.toString() ?? '') == 'NO_CHURCH') {
+          throw const AppError(code: 'NO_CHURCH', message: 'NO_CHURCH');
+        }
+      }
+
+      if (status == 401) {
+        throw const AppError(code: 'UNAUTHORIZED', message: 'UNAUTHORIZED');
+      }
+
+      if (status == 403) {
+        throw const AppError(code: 'FORBIDDEN', message: 'FORBIDDEN');
+      }
+
+      throw _mapToRequiredError(e);
+    } catch (e) {
+      throw _mapToRequiredError(e);
+    }
+  }
+
   Future<TaskModel> createTask({
     required String title,
     required String description,

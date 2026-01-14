@@ -4,11 +4,34 @@ const { z } = require('zod');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAdmin } = require('../middleware/roleMiddleware');
 const { validate } = require('../middleware/validate');
-const { listTasksQuerySchema, createTaskBodySchema, updateTaskSchema } = require('../validators/taskSchemas');
+const {
+  listTasksQuerySchema,
+  createTaskBodySchema,
+  updateTaskSchema,
+  improveTaskTextBodySchema
+} = require('../validators/taskSchemas');
 const { cuidSchema } = require('../validators/commonSchemas');
-const { listTasks, getTaskById, createTask, updateTask, deactivateTask, deleteTask } = require('../controllers/taskController');
+const {
+  listTasks,
+  getTaskById,
+  createTask,
+  updateTask,
+  deactivateTask,
+  deleteTask,
+  improveTaskTextController
+} = require('../controllers/taskController');
 
 const taskRouter = express.Router();
+
+// POST /tasks/improve-text (admin only)
+// Improves title+description via backend-only Hugging Face call
+taskRouter.post(
+  '/improve-text',
+  requireAuth,
+  requireAdmin,
+  validate({ body: improveTaskTextBodySchema }),
+  improveTaskTextController
+);
 
 // POST /tasks (admin only)
 taskRouter.post('/', requireAuth, requireAdmin, validate({ body: createTaskBodySchema }), createTask);

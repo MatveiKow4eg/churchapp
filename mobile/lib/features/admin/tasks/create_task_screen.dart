@@ -9,6 +9,7 @@ import '../../auth/user_session_provider.dart';
 import '../../bible/bible_providers.dart';
 import '../../bible/models/book.dart';
 import '../../tasks/tasks_providers.dart';
+import '../ai/admin_ai_providers.dart';
 import '../presentation/no_access_screen.dart';
 import 'admin_tasks_providers.dart';
 
@@ -29,6 +30,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
 
   String _category = 'OTHER';
   bool _saving = false;
+  bool _improving = false;
+  bool _aiTitleLoading = false;
+  bool _aiDescLoading = false;
 
   late final TabController _tabController;
 
@@ -76,6 +80,184 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
     if (n < 1) return 'Минимум 1';
     if (n > 10000) return 'Максимум 10000';
     return null;
+  }
+
+  Future<void> _showTitleVariants(List<String> items) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              final s = items[i];
+              return ListTile(
+                title: Text(s),
+                onTap: () => Navigator.of(ctx).pop(s),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    // Do NOT auto-replace without confirmation.
+    if (selected != null && selected.trim().isNotEmpty) {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Подтвердить замену'),
+          content: Text('Заменить название на:\n\n${selected.trim()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Заменить'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        _titleCtrl.text = selected.trim();
+      }
+    }
+  }
+
+  Future<void> _aiSuggestTitle() async {
+    final text = _titleCtrl.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите текст')),
+      );
+      return;
+    }
+
+    setState(() => _aiTitleLoading = true);
+
+    try {
+      final repo = ref.read(adminAiRepositoryProvider);
+      final items = await repo.suggestTaskTitles(text: text);
+
+      if (!mounted) return;
+
+      if (items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось улучшить текст, попробуй ещё раз')),
+        );
+        return;
+      }
+
+      await _showTitleVariants(items);
+    } on AppError catch (e) {
+      if (!mounted) return;
+
+      if (e.code == 'UNAUTHORIZED') {
+        context.go(AppRoutes.register);
+        return;
+      }
+
+      // rate limit
+      if (e.code == 'RATE_LIMIT') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Слишком частые запросы. Попробуй позже')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось улучшить текст, попробуй ещё раз')),
+      );
+    } finally {
+      if (mounted) setState(() => _aiTitleLoading = false);
+    }
+  }
+
+  Future<void> _aiRewriteDescription() async {
+    final original = _descCtrl.text.trim();
+    if (original.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите текст')),
+      );
+      return;
+    }
+
+    setState(() => _aiDescLoading = true);
+
+    try {
+      final repo = ref.read(adminAiRepositoryProvider);
+      final improved = await repo.rewriteTaskDescription(text: original);
+
+      if (!mounted) return;
+
+      final apply = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: const Text('Сравнение'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Оригинал', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text(original),
+                    const SizedBox(height: 14),
+                    const Text('Улучшено', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Text(improved),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Применить'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (apply == true) {
+        _descCtrl.text = improved;
+      }
+    } on AppError catch (e) {
+      if (!mounted) return;
+
+      if (e.code == 'UNAUTHORIZED') {
+        context.go(AppRoutes.register);
+        return;
+      }
+
+      if (e.code == 'RATE_LIMIT') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Слишком частые запросы. Попробуй позже')),
+        );
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось улучшить текст, попробуй ещё раз')),
+      );
+    } finally {
+      if (mounted) setState(() => _aiDescLoading = false);
+    }
   }
 
   Future<void> _save() async {
@@ -181,17 +363,30 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                 children: [
                   TextFormField(
                     controller: _titleCtrl,
-                    enabled: !_saving,
-                    decoration: const InputDecoration(
+                    enabled: !_saving && !_aiTitleLoading && !_aiDescLoading,
+                    decoration: InputDecoration(
                       labelText: 'Название',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        tooltip: 'AI варианты',
+                        onPressed: (_saving || _aiTitleLoading || _aiDescLoading)
+                            ? null
+                            : _aiSuggestTitle,
+                        icon: _aiTitleLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('✨', style: TextStyle(fontSize: 18)),
+                      ),
                     ),
                     validator: _validateTitle,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _descCtrl,
-                    enabled: !_saving,
+                    enabled: !_saving && !_aiTitleLoading && !_aiDescLoading,
                     minLines: 3,
                     maxLines: 8,
                     decoration: const InputDecoration(
@@ -199,6 +394,20 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                       border: OutlineInputBorder(),
                     ),
                     validator: _validateDesc,
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: (_saving || _aiTitleLoading || _aiDescLoading)
+                        ? null
+                        : _aiRewriteDescription,
+                    icon: _aiDescLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('✨', style: TextStyle(fontSize: 18)),
+                    label: const Text('✨ Сделать понятнее'),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -250,7 +459,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                   ),
                   const SizedBox(height: 16),
                   FilledButton(
-                    onPressed: _saving ? null : _save,
+                    onPressed: (_saving || _aiTitleLoading || _aiDescLoading)
+                        ? null
+                        : _save,
                     child: _saving
                         ? const SizedBox(
                             width: 22,

@@ -88,10 +88,16 @@ const listTasksQuerySchema = z.object({
     .default(0)
 });
 
+const improveTaskTextBodySchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  description: z.string().trim().min(1).max(2000)
+});
+
 module.exports = {
   taskCategorySchema,
   createTaskSchema,
   createTaskBodySchema,
   updateTaskSchema,
-  listTasksQuerySchema
+  listTasksQuerySchema,
+  improveTaskTextBodySchema
 };

@@ -19,7 +19,21 @@ const avatarRoutes = require('./routes/avatarRoutes');
 // bible router (public)
 const { bibleRouter } = require('./routes/bibleRoutes');
 
+const crypto = require('crypto');
+
 const app = express();
+
+// Request id (propagate from client if provided)
+app.use((req, res, next) => {
+  const headerRid = req.headers['x-request-id'];
+  const requestId = (typeof headerRid === 'string' && headerRid.trim())
+    ? headerRid.trim()
+    : crypto.randomUUID();
+
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+  next();
+});
 
 // Body parsing
 app.use(express.json());

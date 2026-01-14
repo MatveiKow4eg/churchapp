@@ -1,5 +1,6 @@
 const { HttpError } = require('../services/taskService');
 const taskService = require('../services/taskService');
+const { improveTaskText } = require('../services/aiTextService');
 
 const ALLOWED_TASK_PATCH_FIELDS = [
   'title',
@@ -245,11 +246,32 @@ async function deleteTask(req, res, next) {
   }
 }
 
+async function improveTaskTextController(req, res, next) {
+  try {
+    const churchId = req.user?.churchId;
+    if (!churchId) {
+      throw new HttpError(409, 'NO_CHURCH', 'Admin has no church selected');
+    }
+
+    const { title, description } = req.body;
+
+    const improved = await improveTaskText({ title, description });
+
+    return res.status(200).json({
+      title: improved.title,
+      description: improved.description
+    });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listTasks,
   getTaskById,
   createTask,
   updateTask,
   deactivateTask,
-  deleteTask
+  deleteTask,
+  improveTaskTextController
 };

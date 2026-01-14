@@ -2,18 +2,11 @@ const { HttpError } = require('./taskService');
 
 // Hugging Face Inference API (FLAN-T5 base)
 // Backend-only token via env.
-const HF_MODEL = process.env.HF_MODEL || 'google/flan-t5-base';
-const HF_API_URL = `https://api-inference.huggingface.co/models/${HF_MODEL}`;
+const HF_MODEL = process.env.HF_MODEL || 'HuggingFaceTB/SmolLM3-3B';
+const HF_API_URL = process.env.HF_BASE_URL || 'https://router.huggingface.co/v1/chat/completions';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 const DEFAULT_RETRIES = 1;
-
-const GENERATION_LIMITS = {
-  // hard limits to keep responses stable and cheap
-  max_new_tokens: 160,
-  // some HF pipelines use max_length, keep it in sync
-  max_length: 200
-};
 
 function normalizeType(type) {
   return type === 'title' || type === 'description' ? type : null;
@@ -110,14 +103,17 @@ async function callHfOnce({ prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          ...GENERATION_LIMITS,
-          temperature: 0.3,
-          return_full_text: false
-        }
-      })
+body: JSON.stringify({
+  model: HF_MODEL,
+  messages: [
+    {
+      role: 'system',
+      content: 'Ты редактор заданий. Переписывай текст яснее и грамотнее. СТРОГО не добавляй новых требований и деталей. Верни только итоговый текст без пояснений.'
+    },
+    { role: 'user', content: prompt }
+  ],
+  temperature: 0.2
+})
     });
 
     const raw = await resp.text();
@@ -138,12 +134,10 @@ async function callHfOnce({ prompt, timeoutMs = DEFAULT_TIMEOUT_MS }) {
     }
 
     // Typical response: [{ generated_text: "..." }]
-    const generatedText =
-      Array.isArray(data) && data[0] && typeof data[0].generated_text === 'string'
-        ? data[0].generated_text
-        : typeof data?.generated_text === 'string'
-          ? data.generated_text
-          : null;
+const generatedText =
+  typeof data?.choices?.[0]?.message?.content === 'string'
+    ? data.choices[0].message.content
+    : null;
 
     if (!generatedText || generatedText.trim().length === 0) {
       throw new HttpError(502, 'HF_EMPTY_OUTPUT', 'Hugging Face returned empty output');

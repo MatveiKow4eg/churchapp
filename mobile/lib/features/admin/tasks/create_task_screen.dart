@@ -407,7 +407,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('✨', style: TextStyle(fontSize: 18)),
-                    label: const Text('✨ Сделать понятнее'),
+                    label: const Text(''),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(

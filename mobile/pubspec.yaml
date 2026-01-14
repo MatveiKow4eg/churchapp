@@ -15,10 +15,12 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_svg: ^2.0.10
   shared_preferences: ^2.3.2
+  flutter_dynamic_icon: ^2.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
@@ -27,4 +29,22 @@ flutter:
     - assets/catalog/
     - assets/items/
     - assets/icons/avatar_tabs/
-    
+    - assets/icon_main.png
+    - assets/icon_amber.png
+    - assets/icon_dark_cyan.png
+    - assets/icon_dark_gold.png
+    - assets/icon_dark_purple.png
+    - assets/icon_emerald.png
+    - assets/icon_indigo.png
+    - assets/icon_mono.png
+    - assets/icon_pink.png
+    - assets/icon_red.png
+    - assets/icon_sky.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon_main.png"
+  adaptive_icon_background: "#0f172a"
+  adaptive_icon_foreground: "assets/icon_main.png"
+  remove_alpha_ios: true

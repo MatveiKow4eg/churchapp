@@ -7,7 +7,8 @@ import '../../auth/user_session_provider.dart';
 import '../../auth/session_providers.dart';
 import '../../../core/theme/theme_controller.dart';
 import '../settings_controller.dart';
-import '../profile_providers.dart';
+import '../app_icon_controller.dart';
+import '../data/app_icon_variant.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -62,6 +63,10 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(title: 'Тема'),
           const SizedBox(height: 8),
           _ThemeSection(),
+          const SizedBox(height: 24),
+          _SectionHeader(title: 'Иконка приложения'),
+          const SizedBox(height: 8),
+          _AppIconSection(),
           const SizedBox(height: 24),
           _SectionHeader(title: 'Церковь'),
           const SizedBox(height: 8),
@@ -250,6 +255,100 @@ class _AccentColorPicker extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _AppIconSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIcon = ref.watch(appIconControllerProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Выберите иконку для главного экрана',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 64,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: AppIconVariant.values.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (context, index) {
+              final variant = AppIconVariant.values[index];
+              final isSelected = variant == currentIcon;
+
+              return _IconOption(
+                variant: variant,
+                isSelected: isSelected,
+                onTap: () async {
+                  await ref
+                      .read(appIconControllerProvider.notifier)
+                      .setIcon(variant);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _IconOption extends StatelessWidget {
+  const _IconOption({
+    required this.variant,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final AppIconVariant variant;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = Theme.of(context).colorScheme.primary;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 56,
+        height: 56,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: borderColor, width: 3)
+              : Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 1,
+                ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.asset(
+            'assets/${variant.assetPath}',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.image_not_supported, size: 24),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

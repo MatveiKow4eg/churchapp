@@ -1,0 +1,24 @@
+# Конфигурация для генерации всех вариантов иконок
+# Запуск: dart run flutter_launcher_icons -f flutter_launcher_icons-<variant>.yaml
+
+# Основная иконка (уже сгенерирована)
+# flutter_launcher_icons:
+#   android: true
+#   ios: true
+#   image_path: "assets/icon_main.png"
+#   adaptive_icon_background: "#0f172a"
+#   adaptive_icon_foreground: "assets/icon_main.png"
+#   remove_alpha_ios: true
+
+# Для генерации остальных иконок создайте отдельные конфиг-файлы
+# или используйте этот скрипт как шаблон
+
+# Янтарная
+# flutter_launcher_icons:
+#   android: false
+#   ios: true
+#   image_path: "assets/icon_amber.png"
+#   ios_alternate_icons:
+#     - name: "AppIcon-amber"
+#       image_path: "assets/icon_amber.png"
+#   remove_alpha_ios: true

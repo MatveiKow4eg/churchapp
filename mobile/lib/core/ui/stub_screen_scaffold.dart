@@ -14,7 +14,6 @@ class StubScreenScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buttons = <_NavButtonData>[
-      _NavButtonData('Server setup', AppRoutes.server),
       _NavButtonData('Register', AppRoutes.register),
       _NavButtonData('Church select', AppRoutes.church),
       _NavButtonData('Tasks', AppRoutes.tasks),

@@ -8,10 +8,7 @@ import 'bible_repository.dart';
 final bibleApiClientProvider = Provider<BibleApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
 
-  if (config.baseUrl == kBaseUrlLoadingMarker) {
-    throw StateError('BibleApiClient requested while baseUrl is still loading');
-  }
-  if (config.baseUrl.isEmpty) {
+    if (config.baseUrl.isEmpty) {
     throw StateError('BibleApiClient requested while baseUrl is empty (not configured)');
   }
 

@@ -1,9 +1,10 @@
 class AppConfig {
-  const AppConfig({required this.baseUrl});
+  const AppConfig._(this.baseUrl);
+
+  // Hardcoded base URL for production build.
+  static const String _kBaseUrl = 'https://api.kovcheg.ee';
 
   final String baseUrl;
 
-  AppConfig copyWith({String? baseUrl}) {
-    return AppConfig(baseUrl: baseUrl ?? this.baseUrl);
-  }
+  factory AppConfig.production() => const AppConfig._(_kBaseUrl);
 }

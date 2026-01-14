@@ -24,10 +24,8 @@ class CurrentUserNotifier extends AsyncNotifier<UserModel?> {
     // Resolve required gates exactly once per dependency change.
     // Using `.future` here is correct: it blocks until resolved.
     final token = await ref.watch(authTokenProvider.future);
-    final baseUrl = await ref.watch(baseUrlProvider.future);
 
-    // Hard gate: never call /auth/me without both baseUrl and token.
-    if (baseUrl.isEmpty) return null;
+    // Hard gate: never call /auth/me without token.
     if (token == null || token.isEmpty) return null;
 
     // IMPORTANT: do NOT watch providers again here.
@@ -102,7 +100,7 @@ class AuthTokenNotifier extends AsyncNotifier<String?> {
 /// Invariant: `/auth/me` must be called ONLY from currentUserProvider.build()
 /// after `await ref.watch(authTokenProvider.future)`.
 
-/// A ChangeNotifier proxy to refresh GoRouter when auth/baseUrl changes.
+/// A ChangeNotifier proxy to refresh GoRouter when auth session changes.
 final routerRefreshNotifierProvider = Provider<_RouterRefreshNotifier>((ref) {
   final notifier = _RouterRefreshNotifier(ref);
   ref.onDispose(notifier.dispose);
@@ -128,10 +126,6 @@ class _RouterRefreshNotifier extends ChangeNotifier {
       authTokenProvider,
       (_, __) => notifyListeners(),
     );
-    _baseUrlSub = _ref.listen<AsyncValue<String>>(
-      baseUrlProvider,
-      (_, __) => notifyListeners(),
-    );
     _authStateSub = _ref.listen<String?>(
       routerSessionKeyProvider,
       (_, __) => notifyListeners(),
@@ -140,13 +134,11 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 
   final Ref _ref;
   late final ProviderSubscription<AsyncValue<String?>> _tokenSub;
-  late final ProviderSubscription<AsyncValue<String>> _baseUrlSub;
   late final ProviderSubscription<String?> _authStateSub;
 
   @override
   void dispose() {
     _tokenSub.close();
-    _baseUrlSub.close();
     _authStateSub.close();
     super.dispose();
   }

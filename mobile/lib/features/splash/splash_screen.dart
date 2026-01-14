@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/providers.dart';
 import '../auth/session_providers.dart';
 
 class SplashScreen extends ConsumerWidget {
@@ -9,18 +8,14 @@ class SplashScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final baseUrlAsync = ref.watch(baseUrlProvider);
     final tokenAsync = ref.watch(authTokenProvider);
     final userAsync = ref.watch(currentUserProvider);
 
-    final isLoading =
-        baseUrlAsync.isLoading || tokenAsync.isLoading || userAsync.isLoading;
-    final hasError =
-        baseUrlAsync.hasError || tokenAsync.hasError || userAsync.hasError;
+    final isLoading = tokenAsync.isLoading || userAsync.isLoading;
+    final hasError = tokenAsync.hasError || userAsync.hasError;
 
     if (hasError) {
-      final Object? error =
-          baseUrlAsync.error ?? tokenAsync.error ?? userAsync.error;
+      final Object? error = tokenAsync.error ?? userAsync.error;
 
       return Scaffold(
         body: SafeArea(
@@ -51,11 +46,8 @@ class SplashScreen extends ConsumerWidget {
                           await ref
                               .read(authTokenProvider.notifier)
                               .clearToken();
-                          await ref
-                              .read(baseUrlProvider.notifier)
-                              .clearBaseUrl();
                         },
-                        child: const Text('Reset server + logout'),
+                        child: const Text('Выйти'),
                       ),
                     ],
                   ),

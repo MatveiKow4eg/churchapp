@@ -144,7 +144,7 @@ final avatarPreviewUrlProvider = Provider<Uri>((ref) {
   final bust = ref.watch(avatarPreviewBustProvider);
 
   // Base URL comes from the same config used by the API client.
-  final baseUrl = ref.watch(baseUrlProvider).valueOrNull ?? '';
+  final baseUrl = ref.watch(appConfigProvider).baseUrl;
 
   final uri = buildAdventurerPngUrl(baseUrl, options.toQuery());
 
@@ -157,7 +157,7 @@ final avatarPreviewUrlProvider = Provider<Uri>((ref) {
 final adventurerSchemaProvider =
     FutureProvider<Map<String, dynamic>>((ref) async {
   final baseUrl = ref.watch(appConfigProvider).baseUrl;
-  if (baseUrl.isEmpty || baseUrl == kBaseUrlLoadingMarker) {
+  if (baseUrl.isEmpty) {
     throw StateError('Base URL not configured');
   }
 

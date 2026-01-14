@@ -348,7 +348,7 @@ class _TopUserRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final baseUrl = ref.watch(baseUrlProvider).valueOrNull ?? '';
+    final baseUrl = ref.watch(appConfigProvider).baseUrl;
 
     Uri? avatarUrl;
     final cfg = item.user.avatarConfig;
@@ -405,7 +405,7 @@ class _MemberRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final baseUrl = ref.watch(baseUrlProvider).valueOrNull ?? '';
+    final baseUrl = ref.watch(appConfigProvider).baseUrl;
 
     Uri? avatarUrl;
     final cfg = member.avatarConfig;

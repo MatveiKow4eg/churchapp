@@ -155,72 +155,88 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
 
     return AlertDialog(
       title: const Text('Редактировать пользователя'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'id: ${widget.user.id}',
-                style: Theme.of(context).textTheme.bodySmall,
+      content: LayoutBuilder(
+        builder: (context, constraints) {
+          // Ограничиваем ширину и высоту контента, добавляем скролл
+          final maxWidth = constraints.maxWidth.clamp(0.0, 520.0);
+          final maxHeight = MediaQuery.of(context).size.height * 0.7;
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: maxWidth,
+              // ограничиваем высоту, чтобы кнопки не уходили за экран
+              maxHeight: maxHeight,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(right: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'id: ${widget.user.id}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _firstNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Имя',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _lastNameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Фамилия',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _role,
+                    decoration: const InputDecoration(
+                      labelText: 'Role',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'USER', child: Text('USER')),
+                      DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+                      DropdownMenuItem(value: 'SUPERADMIN', child: Text('SUPERADMIN')),
+                    ],
+                    onChanged: (v) => setState(() => _role = v ?? _role),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _status,
+                    decoration: const InputDecoration(
+                      labelText: 'Статус',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'ACTIVE', child: Text('ACTIVE')),
+                      DropdownMenuItem(value: 'BANNED', child: Text('BANNED')),
+                    ],
+                    onChanged: (v) => setState(() => _status = v ?? _status),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    value: _churchId,
+                    decoration: const InputDecoration(
+                      labelText: 'Церковь',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: churchItems,
+                    onChanged: (v) => setState(() => _churchId = v),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _firstNameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Имя',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _lastNameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Фамилия',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _role,
-              decoration: const InputDecoration(
-                labelText: 'Role',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'USER', child: Text('USER')),
-                DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
-                DropdownMenuItem(value: 'SUPERADMIN', child: Text('SUPERADMIN')),
-              ],
-              onChanged: (v) => setState(() => _role = v ?? _role),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _status,
-              decoration: const InputDecoration(
-                labelText: 'Статус',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'ACTIVE', child: Text('ACTIVE')),
-                DropdownMenuItem(value: 'BANNED', child: Text('BANNED')),
-              ],
-              onChanged: (v) => setState(() => _status = v ?? _status),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String?>(
-              value: _churchId,
-              decoration: const InputDecoration(
-                labelText: 'Церковь',
-                border: OutlineInputBorder(),
-              ),
-              items: churchItems,
-              onChanged: (v) => setState(() => _churchId = v),
-            ),
-          ],
-        ),
+          );
+        },
       ),
       actions: [
         TextButton(

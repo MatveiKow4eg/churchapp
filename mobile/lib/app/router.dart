@@ -17,7 +17,7 @@ import '../features/auth/session_providers.dart';
 import '../features/auth/user_session_provider.dart';
 import '../features/church/church_select_screen.dart';
 import '../features/inventory/presentation/inventory_screen.dart';
-import '../features/server/presentation/server_setup_screen.dart';
+// Server setup removed for production
 import '../features/shop/presentation/shop_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/stats/presentation/stats_screen.dart';
@@ -47,7 +47,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   // GoRouter must be stable; use refreshListenable + redirect() for re-evaluation.
   return GoRouter(
     // Keep as-is; redirects will enforce correct route.
-    initialLocation: AppRoutes.server,
+    initialLocation: AppRoutes.splash,
     refreshListenable: refreshListenable,
     routes: <RouteBase>[
       // Bootstrap / auth flow routes (no bottom navigation)
@@ -55,10 +55,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.splash,
         builder: (context, state) => const SplashScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.server,
-        builder: (context, state) => const ServerSetupScreen(),
-      ),
+      // Server setup screen removed in production build
       GoRoute(
         path: AppRoutes.register,
         builder: (context, state) => const RegisterScreen(),
@@ -281,35 +278,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
 
       // Read all gate providers. GoRouter will re-run redirect via refreshListenable.
-      final baseUrlAsync = ref.read(baseUrlProvider);
       final tokenAsync = ref.read(authTokenProvider);
       final userAsync = ref.read(currentUserProvider);
 
       // 1) LOADING gate: splash is used ONLY as loading screen.
       // If anything required for routing is still resolving, force /splash.
-      //
-      // NOTE: `currentUserProvider` can legitimately stay in loading state when
-      // there is no token/baseUrl (because it awaits those gates). In that case
-      // we must NOT force /splash forever.
-      final baseUrlResolved = !baseUrlAsync.isLoading;
       final tokenResolved = !tokenAsync.isLoading;
-      final baseUrl = baseUrlAsync.valueOrNull ?? '';
       final token = tokenAsync.valueOrNull;
 
-      final userNeedsToBeResolved = baseUrlResolved && tokenResolved && baseUrl.isNotEmpty && (token?.isNotEmpty ?? false);
+      final userNeedsToBeResolved = tokenResolved && (token?.isNotEmpty ?? false);
 
-      if (baseUrlAsync.isLoading || tokenAsync.isLoading || (userNeedsToBeResolved && userAsync.isLoading)) {
+      if (tokenAsync.isLoading || (userNeedsToBeResolved && userAsync.isLoading)) {
         return loc == AppRoutes.splash ? null : AppRoutes.splash;
       }
-
-      // 2) BaseUrl gate
-      if (baseUrl.isEmpty) {
-        // Server setup must be reachable only in "no baseUrl" state.
-        return loc == AppRoutes.server ? null : AppRoutes.server;
-      }
-
-      // If baseUrl is configured, /server must not be a terminal location.
-      if (loc == AppRoutes.server) return AppRoutes.splash;
 
       // 3) Auth gate (token + user)
       final user = userAsync.valueOrNull;
@@ -347,7 +328,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             (loc == AppRoutes.splash ||
                 loc == AppRoutes.login ||
                 loc == AppRoutes.register ||
-                loc == AppRoutes.server ||
                 loc == AppRoutes.church)) {
           return AppRoutes.tasks;
         }
@@ -386,7 +366,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (loc == AppRoutes.splash ||
           loc == AppRoutes.login ||
           loc == AppRoutes.register ||
-          loc == AppRoutes.server ||
           loc == AppRoutes.church) {
         return AppRoutes.tasks;
       }
@@ -406,7 +385,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 /// Central place for route paths.
 abstract final class AppRoutes {
-  static const server = '/server';
+  // static const server = '/server'; // removed in production
   static const splash = '/splash';
   static const register = '/register';
   static const login = '/login';

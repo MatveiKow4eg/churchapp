@@ -348,7 +348,7 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Основное'),
-            Tab(text: 'Места Писания'),
+            Tab(text: 'Библия'),
           ],
         ),
       ),

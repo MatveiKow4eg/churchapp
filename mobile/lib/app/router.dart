@@ -580,7 +580,7 @@ final class _AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<_AppShell> {
-  late final PageController _pageController;
+  late PageController _pageController;
 
   List<String> _tabs({required bool isAdmin}) {
     // Order matters: index in this list == NavigationBar index.
@@ -621,10 +621,17 @@ class _AppShellState extends ConsumerState<_AppShell> {
     final tabs = _tabs(isAdmin: isAdmin);
     final newIndex = _indexFromLocation(widget.location, tabs: tabs);
     final atRoot = tabs.contains(widget.location);
-    if (atRoot && _pageController.hasClients) {
-      final currentPage = _pageController.page?.round() ?? _pageController.initialPage;
-      if (currentPage != newIndex) {
-        _pageController.jumpToPage(newIndex);
+    if (atRoot) {
+      if (_pageController.hasClients) {
+        final currentPage = _pageController.page?.round() ?? _pageController.initialPage;
+        if (currentPage != newIndex) {
+          _pageController.jumpToPage(newIndex);
+        }
+      } else {
+        // Coming from a nested route: PageView not attached yet.
+        // Recreate the controller with the correct initial page to avoid showing the wrong tab.
+        _pageController.dispose();
+        _pageController = PageController(initialPage: newIndex);
       }
     }
   }
@@ -643,6 +650,7 @@ class _AppShellState extends ConsumerState<_AppShell> {
     debugPrint('Shell build location=$location');
     final isAdmin = ref.watch(isAdminProvider);
     final tabs = _tabs(isAdmin: isAdmin);
+    final isBible = location.startsWith(AppRoutes.bible);
 
     final currentIndex = _indexFromLocation(location, tabs: tabs);
 
@@ -671,56 +679,74 @@ class _AppShellState extends ConsumerState<_AppShell> {
         location.startsWith(AppRoutes.stats) ||
         location.startsWith(AppRoutes.church) ||
         location.startsWith(AppRoutes.admin) ||
-        location.startsWith(AppRoutes.superadmin) ||
-        location.startsWith('/bible/');
+        location.startsWith(AppRoutes.superadmin);
 
     final atRoot = tabs.contains(location);
 
-    final body = (!hideBottomBar && atRoot)
-        ? PageView(
-            controller: _pageController,
-            onPageChanged: (idx) {
-              final target = _locationFromIndex(idx, tabs: tabs);
-              if (target != location) {
-                context.go(target);
-              }
-            },
-            children: const [
-              TasksScreen(),
-              BibleBooksScreen(),
-              MySubmissionsScreen(),
-            ],
-          )
-        : child;
+    final body = (isBible && !atRoot)
+        ? child
+        : (!hideBottomBar && atRoot)
+            ? PageView(
+                controller: _pageController,
+                onPageChanged: (idx) {
+                  final target = _locationFromIndex(idx, tabs: tabs);
+                  if (target != location) {
+                    context.go(target);
+                  }
+                },
+                children: const [
+                  TasksScreen(),
+                  BibleBooksScreen(),
+                  MySubmissionsScreen(),
+                ],
+              )
+            : child;
 
     return Scaffold(
       body: body,
       bottomNavigationBar: hideBottomBar
           ? null
-          : NavigationBar(
-              selectedIndex: currentIndex,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              onDestinationSelected: (idx) {
-                if (!atRoot) {
-                  final target = _locationFromIndex(idx, tabs: tabs);
-                  if (target != location) context.go(target);
-                  return;
-                }
-                if (_pageController.hasClients) {                  final distance = (currentIndex - idx).abs();
-                  if (distance <= 1) {
-                    _pageController.animateToPage(
-                      idx,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOut,
-                    );
-                  } else {
-                    // Jump for non-adjacent to avoid passing through middle page visually.
-                    _pageController.jumpToPage(idx);
-                  }
-                }
-              },
-              destinations: destinations,
-            ),
+          : isBible
+              ? Container(
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Библия: навигатор (в разработке)',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                )
+              : NavigationBar(
+                  selectedIndex: currentIndex,
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  onDestinationSelected: (idx) {
+                    if (!atRoot) {
+                      final target = _locationFromIndex(idx, tabs: tabs);
+                      if (target != location) context.go(target);
+                      return;
+                    }
+                    if (_pageController.hasClients) {                  final distance = (currentIndex - idx).abs();
+                      if (distance <= 1) {
+                        _pageController.animateToPage(
+                          idx,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOut,
+                        );
+                      } else {
+                        // Jump for non-adjacent to avoid passing through middle page visually.
+                        _pageController.jumpToPage(idx);
+                      }
+                    }
+                  },
+                  destinations: destinations,
+                ),
     );
   }
 }

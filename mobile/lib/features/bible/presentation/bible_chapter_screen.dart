@@ -11,6 +11,8 @@ import '../bible_progress_providers.dart';
 import '../models/verse.dart';
 import '../bible_reader_settings_providers.dart';
 import '../bible_reader_settings_storage.dart';
+import '../bible_annotations_providers.dart';
+import '../bible_annotations_storage.dart';
 import 'bible_reader_settings_sheet.dart';
 
 class BibleChapterScreen extends ConsumerStatefulWidget {
@@ -128,7 +130,8 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
     _lastScrollOffset = 0;
     _scrollController.addListener(_handleScroll);
 
-    _applyInitialHighlightSelection();
+    // Only auto-scroll/highlight on open; do NOT auto-select verses.
+    // Selection is a user action and opens the bottom action panel.
   }
 
   void _handleScroll() {
@@ -157,23 +160,9 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
     }
   }
 
-  void _applyInitialHighlightSelection() {
-    // Only preselect verses for the initial highlight range.
-    _selectedVerseNumbers.clear();
-
-    final start = widget.highlightVerse;
-    if (start == null || start <= 0) return;
-
-    final endRaw = widget.highlightToVerse;
-    final end = (endRaw == null || endRaw <= 0) ? start : endRaw;
-
-    final lo = start < end ? start : end;
-    final hi = start < end ? end : start;
-
-    for (var i = lo; i <= hi; i++) {
-      _selectedVerseNumbers.add(i);
-    }
-  }
+  // Intentionally left: we keep highlight range (from search/task) as a visual cue,
+  // but we don't auto-select verses because selection opens the action panel.
+  void _applyInitialHighlightSelection() {}
 
   @override
   void dispose() {
@@ -377,11 +366,25 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
             }
           }
 
+          final annotationsAsync = ref.watch(bibleAnnotationsProvider);
+          final annotations = annotationsAsync.value ?? const BibleAnnotations();
+
+          final selectedRefs = _selectedVerseNumbers
+              .map(
+                (n) => BibleVerseRef(
+                  translationId: 'rus_syn',
+                  bookId: widget.bookId,
+                  chapter: _chapterNumber,
+                  verse: n,
+                ),
+              )
+              .toList();
+
           return Stack(
             children: [
               ListView.separated(
                 controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(0, 8, 0, 120),
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 16),
                 itemCount: chapter.verses.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
@@ -411,6 +414,18 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                   ? (_verseKeys[v.number] ??= GlobalKey())
                   : null;
 
+              final ann = annotations.annotationFor(
+                BibleVerseRef(
+                  translationId: 'rus_syn',
+                  bookId: widget.bookId,
+                  chapter: _chapterNumber,
+                  verse: v.number,
+                ),
+              );
+
+              final highlightColor = ann.highlight?.color;
+              final highlightBg = highlightColor?.withValues(alpha: 0.22);
+
               final content = Padding(
                 padding: EdgeInsets.symmetric(horizontal: settings.horizontalPadding),
                 child: Row(
@@ -423,12 +438,14 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                           '${v.number}',
                           textAlign: TextAlign.right,
                           style: DefaultTextStyle.of(context).style.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant
-                                    .withOpacity(0.75),
+                                color: ann.isFavorite
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withOpacity(0.75),
                                 fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: ann.isFavorite ? FontWeight.w700 : FontWeight.w500,
                                 height: settings.lineHeight,
                               ),
                         ),
@@ -440,6 +457,7 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                         style: DefaultTextStyle.of(context).style.copyWith(
                               fontSize: settings.fontSize,
                               height: settings.lineHeight,
+                              backgroundColor: highlightBg,
                             ),
                       ),
                     ),
@@ -505,34 +523,250 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                 right: 0,
                 bottom: 0,
                 child: SafeArea(
+                  top: false,
                   minimum: const EdgeInsets.only(bottom: 8),
-                  child: AnimatedSlide(
-                    offset: _showNavArrows ? Offset.zero : const Offset(0, 0.35),
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOut,
-                    child: AnimatedOpacity(
-                      opacity: _showNavArrows ? 1 : 0,
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            _NavArrowButton(
-                              icon: Icons.chevron_left,
-                              tooltip: 'Предыдущая глава',
-                              onPressed: _canPrev ? _goPrev : null,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 160),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: _selectedVerseNumbers.isNotEmpty
+                        ? Padding(
+                            key: const ValueKey('bibleSelectionPanel'),
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                            child: Material(
+                              elevation: 8,
+                              borderRadius: BorderRadius.circular(16),
+                              color: Theme.of(context).colorScheme.surface,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            'Выбрано: ${_selectedVerseNumbers.length}',
+                                            style: Theme.of(context).textTheme.labelLarge,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Отменить выделение',
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () {
+                                            setState(() => _selectedVerseNumbers.clear());
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        for (final c in BibleHighlightColor.values)
+                                          Padding(
+                                            padding: const EdgeInsets.only(right: 10),
+                                            child: InkWell(
+                                              onTap: () async {
+                                                await ref
+                                                    .read(bibleAnnotationsProvider.notifier)
+                                                    .setHighlightForVerses(selectedRefs, c);
+                                                if (mounted) {
+                                                  setState(() => _selectedVerseNumbers.clear());
+                                                }
+                                              },
+                                              borderRadius: BorderRadius.circular(999),
+                                              child: Container(
+                                                width: 26,
+                                                height: 26,
+                                                decoration: BoxDecoration(
+                                                  color: c.color.withValues(alpha: 0.9),
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: Colors.black.withValues(alpha: 0.15),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        const Spacer(),
+                                        IconButton(
+                                          tooltip: 'Убрать подсветку',
+                                          icon: const Icon(Icons.format_color_reset),
+                                          onPressed: () async {
+                                            // Clear highlight for ALL currently selected verses.
+                                            // NOTE: selectedRefs is derived from _selectedVerseNumbers,
+                                            // so keep it stable by copying.
+                                            final refs = List<BibleVerseRef>.from(selectedRefs);
+
+                                            await ref
+                                                .read(bibleAnnotationsProvider.notifier)
+                                                .setHighlightForVerses(refs, null);
+
+                                            // Force immediate rebuild so backgroundColor reads updated provider state.
+                                            ref.invalidate(bibleAnnotationsProvider);
+
+                                            if (mounted) {
+                                              setState(() => _selectedVerseNumbers.clear());
+                                            }
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'В избранное',
+                                          icon: const Icon(Icons.bookmark_add_outlined),
+                                          onPressed: () async {
+                                            await ref
+                                                .read(bibleAnnotationsProvider.notifier)
+                                                .toggleFavoriteForVerses(selectedRefs);
+                                            if (mounted) {
+                                              setState(() => _selectedVerseNumbers.clear());
+                                            }
+                                          },
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Заметка',
+                                          icon: const Icon(Icons.sticky_note_2_outlined),
+                                          onPressed: selectedRefs.isEmpty
+                                              ? null
+                                              : () async {
+                                                  final sorted = [...selectedRefs]
+                                                    ..sort((a, b) => a.verse.compareTo(b.verse));
+
+                                                  // If multiple verses selected, show a combined title and (if possible)
+                                                  // prefill only when all notes are identical.
+                                                  final notes = sorted
+                                                      .map((r) => annotations.annotationFor(r).note ?? '')
+                                                      .toList();
+                                                  final allSame = notes.isNotEmpty && notes.every((n) => n == notes.first);
+
+                                                  final controller = TextEditingController(
+                                                    text: allSame ? notes.first : '',
+                                                  );
+
+                                                  final title = sorted.length == 1
+                                                      ? 'Заметка к стиху ${widget.bookName} $_chapterNumber:${sorted.first.verse}'
+                                                      : 'Заметка к стихам ${widget.bookName} $_chapterNumber:${sorted.first.verse}-${sorted.last.verse}';
+
+                                                  final res = await showModalBottomSheet<String>(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    builder: (ctx) {
+                                                      final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+                                                      return Padding(
+                                                        padding: EdgeInsets.only(
+                                                          left: 16,
+                                                          right: 16,
+                                                          top: 16,
+                                                          bottom: bottomInset + 16,
+                                                        ),
+                                                        child: Column(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              title,
+                                                              style: Theme.of(ctx).textTheme.titleMedium,
+                                                            ),
+                                                            if (sorted.length > 1 && !allSame)
+                                                              Padding(
+                                                                padding: const EdgeInsets.only(top: 6),
+                                                                child: Text(
+                                                                  'У выбранных стихов разные заметки. Новая заметка будет применена ко всем выбранным стихам.',
+                                                                  style: Theme.of(ctx)
+                                                                      .textTheme
+                                                                      .labelSmall
+                                                                      ?.copyWith(
+                                                                        color: Theme.of(ctx)
+                                                                            .colorScheme
+                                                                            .onSurfaceVariant,
+                                                                      ),
+                                                                ),
+                                                              ),
+                                                            const SizedBox(height: 12),
+                                                            TextField(
+                                                              controller: controller,
+                                                              minLines: 3,
+                                                              maxLines: 8,
+                                                              decoration: const InputDecoration(
+                                                                hintText: 'Введите заметку…',
+                                                                border: OutlineInputBorder(),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 12),
+                                                            Row(
+                                                              children: [
+                                                                TextButton(
+                                                                  onPressed: () => Navigator.of(ctx).pop(null),
+                                                                  child: const Text('Отмена'),
+                                                                ),
+                                                                const Spacer(),
+                                                                TextButton(
+                                                                  onPressed: () => Navigator.of(ctx).pop(''),
+                                                                  child: const Text('Очистить'),
+                                                                ),
+                                                                const SizedBox(width: 8),
+                                                                FilledButton(
+                                                                  onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+                                                                  child: const Text('Сохранить'),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+
+                                                  if (!mounted) return;
+                                                  if (res == null) return;
+
+                                                  final noteToApply = res.isEmpty ? null : res;
+                                                  final notifier = ref.read(bibleAnnotationsProvider.notifier);
+                                                  for (final r in selectedRefs) {
+                                                    await notifier.setNoteForVerse(r, noteToApply);
+                                                  }
+
+                                                  if (mounted) {
+                                                    setState(() => _selectedVerseNumbers.clear());
+                                                  }
+                                                },
+                                        ),
+                                      ],
+                                    ),
+                                    // Notes are supported for multiple verses.
+                                  ],
+                                ),
+                              ),
                             ),
-                            _NavArrowButton(
-                              icon: Icons.chevron_right,
-                              tooltip: 'Следующая глава',
-                              onPressed: _canNext ? _goNext : null,
+                          )
+                        : AnimatedSlide(
+                            key: const ValueKey('bibleNavArrows'),
+                            offset: _showNavArrows ? Offset.zero : const Offset(0, 0.35),
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                            child: AnimatedOpacity(
+                              opacity: _showNavArrows ? 1 : 0,
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    _NavArrowButton(
+                                      icon: Icons.chevron_left,
+                                      tooltip: 'Предыдущая глава',
+                                      onPressed: _canPrev ? _goPrev : null,
+                                    ),
+                                    _NavArrowButton(
+                                      icon: Icons.chevron_right,
+                                      tooltip: 'Следующая глава',
+                                      onPressed: _canNext ? _goNext : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
+                          ),
                   ),
                 ),
               ),

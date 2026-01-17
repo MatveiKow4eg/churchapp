@@ -18,6 +18,7 @@ const avatarRoutes = require('./routes/avatarRoutes');
 
 // bible router (public)
 const { bibleRouter } = require('./routes/bibleRoutes');
+const bibleAnnotationsRouter = require('./routes/bibleAnnotationsRoutes');
 
 const crypto = require('crypto');
 
@@ -74,6 +75,9 @@ app.use('/auth', authRouter);
 
 // Mount bible proxy routes (public, no auth)
 app.use('/bible', bibleRouter);
+
+// Mount bible annotations routes (auth)
+app.use('/bible', bibleAnnotationsRouter);
 
 // Mount churches routes
 app.use('/churches', churchRouter);

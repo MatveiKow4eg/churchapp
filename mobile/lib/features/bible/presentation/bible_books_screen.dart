@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../bible_providers.dart';
 import '../bible_progress_providers.dart';
 import '../models/book.dart';
+import '../../../app/router.dart' show AppRoutes;
 
 enum _BooksFilter { all, gospels, psalms, ot }
 
@@ -204,6 +205,16 @@ class _BibleBooksScreenState extends ConsumerState<BibleBooksScreen> {
         ),
         title: const Text('Библия (SYN)'),
         actions: [
+          IconButton(
+            tooltip: 'Избранное',
+            icon: const Icon(Icons.bookmark_outline),
+            onPressed: () => context.go('${AppRoutes.bible}/${AppRoutes.bibleFavorites}'),
+          ),
+          IconButton(
+            tooltip: 'Заметки',
+            icon: const Icon(Icons.sticky_note_2_outlined),
+            onPressed: () => context.go('${AppRoutes.bible}/${AppRoutes.bibleNotes}'),
+          ),
           IconButton(
             tooltip: 'Фильтр',
             icon: const Icon(Icons.filter_list),

@@ -32,6 +32,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   bool _isFormValid = false;
   AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
+  bool _submittedOnce = false;
 
   static final _emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
 
@@ -71,7 +72,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _recomputeFormValidity() {
-    final isValid = _formKey.currentState?.validate() ?? _validateLocally();
+    // Do not trigger Form validators until user tried to submit at least once.
+    // Otherwise fields show "required" errors immediately on first render.
+    final isValid = _submittedOnce
+        ? (_formKey.currentState?.validate() ?? _validateLocally())
+        : _validateLocally();
+
     if (isValid != _isFormValid) {
       setState(() => _isFormValid = isValid);
     }
@@ -117,7 +123,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    setState(() => _autoValidateMode = AutovalidateMode.onUserInteraction);
+    setState(() {
+      _submittedOnce = true;
+      _autoValidateMode = AutovalidateMode.onUserInteraction;
+    });
 
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) {

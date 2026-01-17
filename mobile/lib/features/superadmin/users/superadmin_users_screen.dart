@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/user_session_provider.dart';
 import '../superadmin_providers.dart';
+import '../../avatar/dicebear/dicebear_url.dart';
+import '../../avatar/presentation/avatar_thumb_image.dart';
+import '../../../core/providers/providers.dart';
 
 class SuperAdminUsersScreen extends ConsumerStatefulWidget {
   const SuperAdminUsersScreen({super.key});
@@ -176,6 +179,8 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),
+              const SizedBox(height: 8),
+              _AvatarReadonlyPreview(user: widget.user),
               const SizedBox(height: 12),
               TextField(
                 controller: _firstNameCtrl,
@@ -265,6 +270,47 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
           child: Text(_saving ? 'Сохранение...' : 'Сохранить'),
         ),
       ],
+    );
+  }
+}
+
+class _AvatarReadonlyPreview extends ConsumerWidget {
+  const _AvatarReadonlyPreview({required this.user});
+  final AdminUserDto user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Uri? avatarUrl;
+    final cfg = user.avatarConfig;
+    if (cfg is Map) {
+      final baseUrl = ref.watch(appConfigProvider).baseUrl;
+      final map = Map<String, dynamic>.from(cfg);
+      if (map.isNotEmpty) {
+        avatarUrl = buildAdventurerPngUrl(baseUrl, map);
+      }
+    }
+
+    return Center(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          width: 96,
+          height: 96,
+          color: Theme.of(context).colorScheme.surfaceVariant,
+          alignment: Alignment.center,
+          child: avatarUrl != null
+              ? AvatarThumbImage(
+                  url: avatarUrl,
+                  fit: BoxFit.cover,
+                  cacheWidth: 128,
+                )
+              : Icon(
+                  Icons.person,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+        ),
+      ),
     );
   }
 }

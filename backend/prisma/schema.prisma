@@ -135,6 +135,7 @@ model User {
   lifetimeXpOther     Int      @default(0)
 
   xpLedger XpLedger[]
+  bibleVerseAnnotations BibleVerseAnnotation[]
 }
 
 model Task {
@@ -283,4 +284,28 @@ model XpLedger {
   @@index([userId, createdAt])
   @@index([userId, source, createdAt])
   @@index([taskId])
+}
+
+model BibleVerseAnnotation {
+  id            String   @id @default(cuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  translationId String
+  bookId        String
+  chapter       Int
+  verse         Int
+
+  // Stored as lowercase string: yellow|green|blue|pink|purple
+  highlight     String?
+  isFavorite    Boolean  @default(false)
+  note          String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, translationId, bookId, chapter, verse], name: "userId_translationId_bookId_chapter_verse")
+  @@index([userId, updatedAt])
+  @@index([userId, translationId, bookId, chapter])
 }

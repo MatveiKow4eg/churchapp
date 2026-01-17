@@ -36,6 +36,8 @@ import '../features/bible/presentation/bible_books_screen.dart';
 import '../features/bible/presentation/bible_chapter_screen.dart';
 import '../features/bible/presentation/bible_search_screen.dart';
 import '../features/bible/presentation/bible_search_all_screen.dart';
+import '../features/bible/presentation/bible_favorites_screen.dart';
+import '../features/bible/presentation/bible_notes_screen.dart';
 import '../features/bible/models/bible_search.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -98,6 +100,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const BibleBooksScreen(),
             routes: <RouteBase>[
               // Static routes must be above dynamic ':bookId/:chapter'.
+              GoRoute(
+                path: AppRoutes.bibleFavorites,
+                builder: (context, state) => const BibleFavoritesScreen(),
+              ),
+              GoRoute(
+                path: AppRoutes.bibleNotes,
+                builder: (context, state) => const BibleNotesScreen(),
+              ),
               GoRoute(
                 path: 'search',
                 builder: (context, state) => const BibleSearchScreen(),
@@ -419,6 +429,8 @@ abstract final class AppRoutes {
   static const bibleSearch = '/bible/search';
   static const bibleChapter = '/bible/:bookId/:chapter';
   static const bibleSearchAll = '/bible/search-all';
+  static const bibleFavorites = 'favorites';
+  static const bibleNotes = 'notes';
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
@@ -706,24 +718,7 @@ class _AppShellState extends ConsumerState<_AppShell> {
       body: body,
       bottomNavigationBar: hideBottomBar
           ? null
-          : isBible
-              ? Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    border: Border(
-                      top: BorderSide(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'Библия: навигатор (в разработке)',
-                    style: Theme.of(context).textTheme.labelLarge,
-                  ),
-                )
-              : NavigationBar(
+          : NavigationBar(
                   selectedIndex: currentIndex,
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                   onDestinationSelected: (idx) {

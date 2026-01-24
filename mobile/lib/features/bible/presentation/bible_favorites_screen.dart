@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../bible_annotations_providers.dart';
 import '../bible_annotations_storage.dart';
@@ -11,6 +12,12 @@ class BibleFavoritesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // When opening the screen, trigger a best-effort refresh from the backend.
+    // This runs after the first frame to avoid calling async code during build.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      ref.read(bibleAnnotationsProvider.notifier).syncAllFromServerBestEffort();
+    });
+
     final async = ref.watch(bibleAnnotationsProvider);
 
     return Scaffold(

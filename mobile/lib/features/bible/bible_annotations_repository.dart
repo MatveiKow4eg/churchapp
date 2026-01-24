@@ -60,6 +60,27 @@ class BibleAnnotationsRepository {
 
   final ApiClient _apiClient;
 
+  Future<List<BibleAnnotationDto>> listAll() async {
+    try {
+      final res = await _apiClient.dio.get<Map<String, dynamic>>(
+        '/bible/annotations/all',
+      );
+
+      final data = res.data;
+      final itemsAny = (data ?? const <String, dynamic>{})['items'];
+      if (itemsAny is! List) return const [];
+
+      return itemsAny
+          .whereType<Map>()
+          .map((e) => BibleAnnotationDto.fromJson(Map<String, dynamic>.from(e)))
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw ApiClient.mapDioError(e);
+    } catch (e) {
+      throw ApiClient.mapDioError(e);
+    }
+  }
+
   Future<List<BibleAnnotationDto>> list({
     required String translationId,
     required String bookId,

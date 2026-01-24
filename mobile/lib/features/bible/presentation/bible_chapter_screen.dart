@@ -610,37 +610,85 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
                                             ),
                                           ),
                                         const Spacer(),
-                                        IconButton(
-                                          tooltip: 'Убрать подсветку',
-                                          icon: const Icon(Icons.format_color_reset),
-                                          onPressed: () async {
-                                            // Clear highlight for ALL currently selected verses.
-                                            // NOTE: selectedRefs is derived from _selectedVerseNumbers,
-                                            // so keep it stable by copying.
-                                            final refs = List<BibleVerseRef>.from(selectedRefs);
+                                        // Highlight clear button: disable if nothing highlighted in selection.
+                                        Builder(
+                                          builder: (context) {
+                                            final hasAnyHighlight = selectedRefs.any(
+                                              (r) => annotations.annotationFor(r).highlight != null,
+                                            );
 
-                                            await ref
-                                                .read(bibleAnnotationsProvider.notifier)
-                                                .setHighlightForVerses(refs, null);
+                                            return IconButton(
+                                              tooltip: 'Убрать подсветку',
+                                              icon: const Icon(Icons.format_color_reset),
+                                              onPressed: !hasAnyHighlight
+                                                  ? null
+                                                  : () async {
+                                                      // Clear highlight for ALL currently selected verses.
+                                                      // NOTE: selectedRefs is derived from _selectedVerseNumbers,
+                                                      // so keep it stable by copying.
+                                                      final refs = List<BibleVerseRef>.from(selectedRefs);
 
-                                            // Force immediate rebuild so backgroundColor reads updated provider state.
-                                            ref.invalidate(bibleAnnotationsProvider);
+                                                      await ref
+                                                          .read(bibleAnnotationsProvider.notifier)
+                                                          .setHighlightForVerses(refs, null);
 
-                                            if (mounted) {
-                                              setState(() => _selectedVerseNumbers.clear());
-                                            }
+                                                      // Force immediate rebuild so backgroundColor reads updated provider state.
+                                                      ref.invalidate(bibleAnnotationsProvider);
+
+                                                      if (mounted) {
+                                                        setState(() => _selectedVerseNumbers.clear());
+                                                      }
+                                                    },
+                                            );
                                           },
                                         ),
-                                        IconButton(
-                                          tooltip: 'В избранное',
-                                          icon: const Icon(Icons.bookmark_add_outlined),
-                                          onPressed: () async {
-                                            await ref
-                                                .read(bibleAnnotationsProvider.notifier)
-                                                .toggleFavoriteForVerses(selectedRefs);
-                                            if (mounted) {
-                                              setState(() => _selectedVerseNumbers.clear());
-                                            }
+                                        // Favorite toggle: show add/remove depending on current state.
+                                        // UX rule for mixed selection:
+                                        // - if ANY selected verse is NOT favorite => show "add to favorites" and add missing ones
+                                        // - else (all are favorite) => show "remove" and remove for all
+                                        Builder(
+                                          builder: (context) {
+                                            final selected = List<BibleVerseRef>.from(selectedRefs);
+                                            final anyNotFavorite = selected.any(
+                                              (r) => !annotations.annotationFor(r).isFavorite,
+                                            );
+
+                                            return IconButton(
+                                              tooltip: anyNotFavorite
+                                                  ? 'В избранное'
+                                                  : 'Убрать из избранного',
+                                              icon: Icon(
+                                                anyNotFavorite
+                                                    ? Icons.bookmark_add_outlined
+                                                    : Icons.bookmark_remove_outlined,
+                                              ),
+                                              onPressed: () async {
+                                                final notifier = ref.read(bibleAnnotationsProvider.notifier);
+
+                                                // Apply the same strategy as in the notifier, but avoid stale UI state:
+                                                // update local annotations immediately after the action.
+                                                if (anyNotFavorite) {
+                                                  // Add only missing favorites (keeps already-favorite as favorite).
+                                                  final toAdd = selected
+                                                      .where((r) => !annotations.annotationFor(r).isFavorite)
+                                                      .toList(growable: false);
+                                                  if (toAdd.isNotEmpty) {
+                                                    await notifier.toggleFavoriteForVerses(toAdd);
+                                                  }
+                                                } else {
+                                                  // All are favorite => remove for all.
+                                                  await notifier.toggleFavoriteForVerses(selected);
+                                                }
+
+                                                // Force rebuild of this widget so the icon/tooltip updates immediately,
+                                                // even if async provider state lags for a frame.
+                                                ref.invalidate(bibleAnnotationsProvider);
+
+                                                if (mounted) {
+                                                  setState(() => _selectedVerseNumbers.clear());
+                                                }
+                                              },
+                                            );
                                           },
                                         ),
                                         IconButton(

@@ -70,6 +70,10 @@ model Church {
   id            String            @id @default(cuid())
   name          String            @unique
   city          String?
+
+  /// Code required to join this church. Used only at join-time; does not affect existing members.
+  joinCode      String            @unique
+
   users         User[]
   tasks         Task[]
   submissions   Submission[]

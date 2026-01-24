@@ -3,7 +3,7 @@ const express = require('express');
 const { validate } = require('../middleware/validate');
 const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAdmin } = require('../middleware/roleMiddleware');
-const { createChurchSchema, searchChurchesQuerySchema } = require('../validators/churchSchemas');
+const { createChurchSchema, searchChurchesQuerySchema, joinChurchBodySchema } = require('../validators/churchSchemas');
 const { z } = require('zod');
 const churchController = require('../controllers/churchController');
 
@@ -35,8 +35,18 @@ router.post(
 router.post(
   '/:id/join',
   requireAuth,
-  validate({ params: joinParamsSchema }),
+  validate({ params: joinParamsSchema, body: joinChurchBodySchema }),
   churchController.joinChurch
+);
+
+// POST /churches/:id/join-code/rotate
+// Access: ADMIN or SUPERADMIN
+router.post(
+  '/:id/join-code/rotate',
+  requireAuth,
+  requireAdmin,
+  validate({ params: joinParamsSchema }),
+  churchController.rotateJoinCode
 );
 
 module.exports = { churchRouter: router };

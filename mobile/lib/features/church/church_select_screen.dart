@@ -80,16 +80,55 @@ class _ChurchSelectScreenState extends ConsumerState<ChurchSelectScreen> {
   }
 
   Future<void> _joinChurch(String churchId) async {
+    final code = await _showJoinCodeDialog();
+    if (!mounted || code == null) return;
+
     try {
       await ref
           .read(joinChurchControllerProvider.notifier)
-          .join(churchId: churchId);
+          .join(churchId: churchId, code: code);
 
       if (!mounted) return;
       context.go(AppRoutes.tasks);
     } catch (_) {
       // SnackBar handled by listener, stay on screen.
     }
+  }
+
+  Future<String?> _showJoinCodeDialog() async {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Код церкви'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              hintText: 'Введи код',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final code = controller.text.trim();
+                Navigator.of(ctx).pop(code.isEmpty ? null : code);
+              },
+              child: const Text('Подтвердить'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

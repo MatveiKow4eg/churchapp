@@ -26,7 +26,12 @@ const searchChurchesQuerySchema = z.object({
     .optional()
 });
 
+const joinChurchBodySchema = z.object({
+  code: z.string().trim().min(4).max(12)
+});
+
 module.exports = {
   createChurchSchema,
-  searchChurchesQuerySchema
+  searchChurchesQuerySchema,
+  joinChurchBodySchema
 };

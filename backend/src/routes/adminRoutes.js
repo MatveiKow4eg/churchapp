@@ -79,6 +79,7 @@ router.post('/churches', validate({ body: createChurchSchema }), async (req, res
         id: church.id,
         name: church.name,
         city: church.city,
+        joinCode: church.joinCode,
         createdAt: church.createdAt
       }
     });
@@ -93,7 +94,7 @@ router.get('/churches', async (req, res, next) => {
   try {
     const items = await prisma.church.findMany({
       orderBy: [{ createdAt: 'desc' }],
-      select: { id: true, name: true, city: true, createdAt: true }
+      select: { id: true, name: true, city: true, joinCode: true, createdAt: true }
     });
 
     return res.json({ items });

@@ -44,10 +44,16 @@ class ChurchRepository {
     }
   }
 
-  Future<JoinChurchResult> joinChurch({required String churchId}) async {
+  Future<JoinChurchResult> joinChurch({
+    required String churchId,
+    required String code,
+  }) async {
     try {
       final resp = await _apiClient.dio.post<Map<String, dynamic>>(
         '/churches/$churchId/join',
+        data: {
+          'code': code,
+        },
       );
 
       final data = resp.data;
@@ -73,6 +79,17 @@ class ChurchRepository {
           code: 'CONFLICT',
           message: 'Ты уже состоишь в церкви. Перезайди в приложение.',
         );
+      }
+
+      if (status == 403 && (e.response?.data is Map)) {
+        final data = Map<String, dynamic>.from(e.response!.data as Map);
+        final err = data['error'];
+        if (err is Map) {
+          final code = (err['code'] ?? '').toString();
+          if (code == 'INVALID_CHURCH_CODE') {
+            throw const AppError(code: 'INVALID_CHURCH_CODE', message: 'Неверный код');
+          }
+        }
       }
 
       throw _mapToRequiredError(e);

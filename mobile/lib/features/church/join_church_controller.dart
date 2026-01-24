@@ -20,7 +20,10 @@ class JoinChurchController extends AutoDisposeAsyncNotifier<JoinChurchState> {
     return const JoinChurchState(joiningChurchId: null);
   }
 
-  Future<JoinChurchResult> join({required String churchId}) async {
+  Future<JoinChurchResult> join({
+    required String churchId,
+    required String code,
+  }) async {
     // Keep in state which card is loading (so UI can show spinner on that card)
     state = const AsyncLoading<JoinChurchState>().copyWithPrevious(
       AsyncData(JoinChurchState(joiningChurchId: churchId)),
@@ -28,7 +31,7 @@ class JoinChurchController extends AutoDisposeAsyncNotifier<JoinChurchState> {
 
     try {
       final repo = ref.read(churchRepositoryProvider);
-      final result = await repo.joinChurch(churchId: churchId);
+      final result = await repo.joinChurch(churchId: churchId, code: code);
 
       // Save new token via centralized auth token provider
       await ref.read(authTokenProvider.notifier).setToken(result.token);

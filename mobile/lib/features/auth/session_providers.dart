@@ -122,24 +122,28 @@ final routerSessionKeyProvider = Provider<String?>((ref) {
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(this._ref) {
+    // Re-run redirects when token changes OR when currentUser changes.
+    // IMPORTANT: do NOT refresh router based on routerSessionKeyProvider here,
+    // because it depends on currentUserProvider and would create a feedback loop:
+    // currentUser changes -> router refresh -> redirect -> splash gate -> rebuild -> etc.
     _tokenSub = _ref.listen<AsyncValue<String?>>(
       authTokenProvider,
       (_, __) => notifyListeners(),
     );
-    _authStateSub = _ref.listen<String?>(
-      routerSessionKeyProvider,
+    _userSub = _ref.listen<AsyncValue>(
+      currentUserProvider,
       (_, __) => notifyListeners(),
     );
   }
 
   final Ref _ref;
   late final ProviderSubscription<AsyncValue<String?>> _tokenSub;
-  late final ProviderSubscription<String?> _authStateSub;
+  late final ProviderSubscription<AsyncValue> _userSub;
 
   @override
   void dispose() {
     _tokenSub.close();
-    _authStateSub.close();
+    _userSub.close();
     super.dispose();
   }
 }

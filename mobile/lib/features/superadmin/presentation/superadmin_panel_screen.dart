@@ -48,56 +48,87 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close'),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Close'),
+              ),
             ),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  final token = await ref
-                      .read(superadminApiProvider)
-                      .impersonate(churchId: c.id);
-                  await ref.read(authTokenProvider.notifier).setToken(token);
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.swap_horiz),
+                onPressed: () async {
+                  // If already in this church context, do nothing.
+                  final currentChurchId = ref.read(currentUserProvider).valueOrNull?.churchId;
+                  if (currentChurchId == c.id) {
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Already in this church')),
+                    );
+                    return;
+                  }
 
-                  if (!mounted) return;
+                  try {
+                    final token = await ref
+                        .read(superadminApiProvider)
+                        .impersonate(churchId: c.id);
 
-                  // Refresh session so router/guards see new churchId.
-                  await ref.read(currentUserProvider.notifier).loadMe();
-                  ref.invalidate(currentUserProvider);
+                    // Close dialog first to avoid navigator lock during session refresh.
+                    Navigator.of(ctx).pop();
 
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Switched church context')),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to switch church: $e')),
-                  );
-                }
-              },
-              child: const Text('Switch to this church'),
+                    // Let the dialog pop finish.
+                    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+                    await ref.read(authTokenProvider.notifier).setToken(token);
+
+                    // Force /auth/me to re-run and update churchId in memory.
+                    // Using refresh().future ensures we wait for the new /auth/me
+                    // response before showing success (and before other screens
+                    // compute "already in this church" from stale user data).
+                    // Riverpod's refresh() returns the new value/future; keep it explicitly
+                    // to satisfy analyzer and to ensure /auth/me completed.
+                    final _ = await ref.refresh(currentUserProvider.future);
+
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Switched church context')),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to switch church: $e')),
+                    );
+                  }
+                },
+                label: const Text('Switch to this church'),
+              ),
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await ref.read(superadminApiProvider).rotateJoinCode(id: c.id);
-                  if (!mounted) return;
-                  ref.invalidate(superadminChurchesProvider);
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('New join code generated')),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to rotate join code: $e')),
-                  );
-                }
-              },
-              child: const Text('Generate new code'),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.autorenew),
+                onPressed: () async {
+                  try {
+                    await ref
+                        .read(superadminApiProvider)
+                        .rotateJoinCode(id: c.id);
+                    if (!mounted) return;
+                    ref.invalidate(superadminChurchesProvider);
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('New join code generated')),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to rotate join code: $e')),
+                    );
+                  }
+                },
+                label: const Text('Generate new code'),
+              ),
             ),
           ],
         );

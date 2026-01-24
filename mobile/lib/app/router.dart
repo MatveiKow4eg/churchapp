@@ -313,13 +313,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 4) User is present: route by church flow
       // Make routing decision based on role FIRST.
 
-      // SUPERADMIN: allow /superadmin even without church.
-      // IMPORTANT: do NOT redirect superadmin to /tasks from /superadmin,
-      // otherwise they get kicked back into tasks where API returns NO_CHURCH.
+      // SUPERADMIN: keep them in the shell and allow admin routes.
+      // NOTE: superadmin panel is mounted under /admin/superadmin.
       final role = user.role.trim().toUpperCase();
       if (role == 'SUPERADMIN') {
-        if (loc == AppRoutes.superadmin) return null;
-
         final isInShell = loc.startsWith(AppRoutes.tasks) ||
             loc.startsWith(AppRoutes.bible) ||
             loc.startsWith(AppRoutes.shop) ||
@@ -419,7 +416,7 @@ abstract final class AppRoutes {
 
   // Admin
   static const admin = '/admin';
-  static const superadmin = '/superadmin';
+  static const superadmin = '/admin/superadmin';
   static const forbidden = '/403';
 
   // Bible

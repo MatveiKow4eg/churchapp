@@ -230,7 +230,12 @@ router.post('/impersonate', async (req, res, next) => {
       churchId: church.id
     });
 
-    return res.json({ token });
+    // IMPORTANT:
+    // Client relies on /auth/me to know the "current" church context.
+    // For impersonation we do NOT want to change DB user.churchId.
+    // So return the selected churchId explicitly and let client treat it
+    // as the active context.
+    return res.json({ token, churchId: church.id });
   } catch (err) {
     return next(err);
   }

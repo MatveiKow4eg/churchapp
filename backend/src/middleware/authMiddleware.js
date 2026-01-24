@@ -70,10 +70,19 @@ async function requireAuth(req, res, next) {
       throw new HttpError(403, 'FORBIDDEN', 'User is banned');
     }
 
+    // IMPORTANT:
+    // For SUPERADMIN "impersonation" we issue a token with a chosen churchId,
+    // but we do NOT change dbUser.churchId. Most endpoints use req.user.churchId
+    // for scoping, so for SUPERADMIN we must prefer the token churchId when present.
+    const effectiveChurchId =
+      (dbUser.role === 'SUPERADMIN' && payload.churchId != null
+        ? payload.churchId
+        : dbUser.churchId) ?? null;
+
     req.user = {
       id: dbUser.id,
       role: dbUser.role,
-      churchId: dbUser.churchId ?? null
+      churchId: effectiveChurchId
     };
 
     return next();

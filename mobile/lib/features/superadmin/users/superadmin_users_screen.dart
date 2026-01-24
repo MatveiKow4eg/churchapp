@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/user_session_provider.dart';
+import '../../auth/session_providers.dart';
 import '../superadmin_providers.dart';
 import '../../avatar/dicebear/dicebear_url.dart';
 import '../../avatar/presentation/avatar_thumb_image.dart';
 import '../../../core/providers/providers.dart';
+
+// Superadmin users list filter.
+// null means "not chosen yet"; we will auto-select current church.
+final _selectedChurchIdProvider = StateProvider<String?>((ref) => null);
 
 class SuperAdminUsersScreen extends ConsumerStatefulWidget {
   const SuperAdminUsersScreen({super.key});
@@ -27,6 +32,7 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
 
     final usersAsync = ref.watch(superadminUsersProvider);
     final churchesAsync = ref.watch(superadminChurchesProvider);
+    final currentChurchId = ref.watch(currentUserProvider).valueOrNull?.churchId;
 
     return Scaffold(
       appBar: AppBar(
@@ -50,15 +56,72 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
                 for (final c in churches) c.id: '${c.name}${(c.city ?? '').trim().isNotEmpty ? ' (${c.city})' : ''}'
               };
 
-              if (users.isEmpty) {
-                return const Center(child: Text('Пользователи не найдены'));
-              }
+              final allChurches = <AdminChurchDto>[
+                AdminChurchDto(
+                  id: '__ALL__',
+                  name: 'Все церкви',
+                  city: null,
+                  joinCode: '',
+                  createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+                ),
+                ...churches,
+              ];
 
-              return ListView.separated(
-                itemCount: users.length,
+              final selectedChurchIdState = ref.watch(_selectedChurchIdProvider);
+              final initialSelected = (selectedChurchIdState == null)
+                  ? (currentChurchId ?? '__ALL__')
+                  : selectedChurchIdState;
+
+              // If we have no current church (unlikely for superadmin), default to ALL.
+              final selectedChurchId = initialSelected;
+
+              final filtered = selectedChurchId == '__ALL__'
+                  ? users
+                  : users.where((u) => u.churchId == selectedChurchId).toList(growable: false);
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        const Text('Церковь:'),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: selectedChurchId,
+                            items: allChurches
+                                .map(
+                                  (c) => DropdownMenuItem<String>(
+                                    value: c.id,
+                                    child: Text(
+                                      c.id == '__ALL__'
+                                          ? c.name
+                                          : '${c.name}${(c.city ?? '').trim().isNotEmpty ? ' (${c.city})' : ''}',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(growable: false),
+                            onChanged: (v) {
+                              if (v == null) return;
+                              ref.read(_selectedChurchIdProvider.notifier).state = v;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('Пользователи не найдены'))
+                        : ListView.separated(
+                            itemCount: filtered.length,
                 separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  final u = users[index];
+                              final u = filtered[index];
                   final name = '${u.firstName} ${u.lastName}'.trim();
                   final now = DateTime.now();
                   final isNewUser = now.difference(u.createdAt).inDays < 3;
@@ -119,6 +182,9 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
                     },
                   );
                 },
+                          ),
+                  ),
+                ],
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),

@@ -60,15 +60,9 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
               child: FilledButton.icon(
                 icon: const Icon(Icons.swap_horiz),
                 onPressed: () async {
-                  // If already in this church context, do nothing.
-                  final currentChurchId = ref.read(currentUserProvider).valueOrNull?.churchId;
-                  if (currentChurchId == c.id) {
-                    Navigator.of(ctx).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Already in this church')),
-                    );
-                    return;
-                  }
+                  // IMPORTANT: for SUPERADMIN we can be in an impersonated church context
+                  // that comes from the token, not from /auth/me (which returns DB user.churchId).
+                  // So we must NOT block switching based on currentUserProvider.churchId.
 
                   try {
                     final token = await ref

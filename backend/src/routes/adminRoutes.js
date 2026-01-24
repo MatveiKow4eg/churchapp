@@ -204,7 +204,11 @@ router.delete('/users/:id', async (req, res, next) => {
 
 // POST /admin/impersonate
 // Access: SUPERADMIN
-// Issues a new token for the same user but with a selected churchId (no DB changes).
+// Switches SUPERADMIN context to a selected church.
+// Also ensures the user is a "member" of that church by setting user.churchId
+// (legacy single-church model).
+// NOTE: once multi-church membership is introduced, this should write to ChurchMember
+// instead of overwriting user.churchId.
 router.post('/impersonate', async (req, res, next) => {
   try {
     const { churchId } = req.body ?? {};
@@ -222,6 +226,13 @@ router.post('/impersonate', async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Church not found' } });
     }
 
+    // Persist membership in DB (legacy: single church per user).
+    // This makes the user a real participant (can submit tasks, etc.).
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { churchId: church.id }
+    });
+
     const { signAccessToken } = require('../utils/jwt');
 
     const token = signAccessToken({
@@ -230,11 +241,6 @@ router.post('/impersonate', async (req, res, next) => {
       churchId: church.id
     });
 
-    // IMPORTANT:
-    // Client relies on /auth/me to know the "current" church context.
-    // For impersonation we do NOT want to change DB user.churchId.
-    // So return the selected churchId explicitly and let client treat it
-    // as the active context.
     return res.json({ token, churchId: church.id });
   } catch (err) {
     return next(err);

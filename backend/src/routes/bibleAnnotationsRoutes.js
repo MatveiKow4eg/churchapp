@@ -18,7 +18,10 @@ router.get('/annotations', requireAuth, async (req, res, next) => {
 
 // GET /bible/annotations/all
 // Returns ALL user's annotations (favorites, notes, highlights) across all chapters.
-router.get('/annotations/all', requireAuth, async (req, res, next) => {
+router.get('/annotations/all', requireAuth, (req, res, next) => {
+  console.log('[ALL] auth header:', req.headers.authorization);
+  next();
+}, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const rows = await listUserAnnotations(userId, {});

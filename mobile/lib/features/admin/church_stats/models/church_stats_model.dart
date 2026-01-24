@@ -2,6 +2,7 @@ class ChurchStatsModel {
   ChurchStatsModel({
     required this.month,
     required this.activeUsersCount,
+    required this.onlineUsersCount,
     required this.totalMembersCount,
     required this.approvedSubmissionsCount,
     required this.pendingSubmissionsCount,
@@ -15,6 +16,7 @@ class ChurchStatsModel {
 
   final String month;
   final int activeUsersCount;
+  final int onlineUsersCount;
   final int totalMembersCount;
   final int approvedSubmissionsCount;
   final int pendingSubmissionsCount;
@@ -36,6 +38,7 @@ class ChurchStatsModel {
     return ChurchStatsModel(
       month: (json['month'] ?? '').toString(),
       activeUsersCount: (json['activeUsersCount'] as num?)?.toInt() ?? 0,
+      onlineUsersCount: (json['onlineUsersCount'] as num?)?.toInt() ?? 0,
       totalMembersCount: (json['totalMembersCount'] as num?)?.toInt() ?? 0,
       approvedSubmissionsCount:
           (json['approvedSubmissionsCount'] as num?)?.toInt() ?? 0,

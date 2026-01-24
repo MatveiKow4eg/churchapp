@@ -60,6 +60,8 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
                 itemBuilder: (context, index) {
                   final u = users[index];
                   final name = '${u.firstName} ${u.lastName}'.trim();
+                  final now = DateTime.now();
+                  final isNewUser = now.difference(u.createdAt).inDays < 3;
                   final email = (u.email ?? '').trim();
                   final churchLabel = u.churchId == null
                       ? '—'
@@ -67,7 +69,34 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
                   final status = u.status;
 
                   return ListTile(
-                    title: Text(name.isNotEmpty ? name : (email.isNotEmpty ? email : u.id)),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name.isNotEmpty ? name : (email.isNotEmpty ? email : u.id),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isNewUser) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'NEW',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     subtitle: Text(
                       'id: ${u.id}\n'
                       'email: ${email.isEmpty ? '—' : email}\n'

@@ -95,6 +95,24 @@ meRouter.get('/xp', requireAuth, async (req, res, next) => {
 // GET /me/inventory
 meRouter.get('/inventory', requireAuth, getInventory);
 
+// POST /me/ping
+// Updates lastSeenAt used for online presence approximation.
+meRouter.post('/ping', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'UNAUTHORIZED' });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { lastSeenAt: new Date() }
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // PUT /me/avatar
 meRouter.put(
   '/avatar',

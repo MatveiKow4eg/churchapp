@@ -294,8 +294,7 @@ class _StatsGrid extends StatelessWidget {
           _StatCard(title: 'Активных', value: '${stats.activeUsersCount}'),
           _StatCard(
             title: 'Общий онлайн',
-            // пока нет реального presence: считаем online = ACTIVE
-            value: '${stats.activeUsersCount}',
+            value: '${stats.onlineUsersCount}',
           ),
           _StatCard(title: 'Одобрено', value: '${stats.approvedSubmissionsCount}'),
           _StatCard(title: 'В очереди', value: '${stats.pendingSubmissionsCount}'),

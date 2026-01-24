@@ -62,13 +62,14 @@ class BibleAnnotationsRepository {
 
   Future<List<BibleAnnotationDto>> listAll() async {
     try {
-      final res = await _apiClient.dio.get<Map<String, dynamic>>(
+      final res = await _apiClient.dio.get(
         '/bible/annotations/all',
       );
 
-      final data = res.data;
-      final itemsAny = (data ?? const <String, dynamic>{})['items'];
-      if (itemsAny is! List) return const [];
+      final raw = res.data;
+      final itemsAny = (raw is Map<String, dynamic>)
+          ? (raw['items'] as List? ?? const [])
+          : (raw as List? ?? const []);
 
       return itemsAny
           .whereType<Map>()

@@ -1,15 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/presence/presence_ping_service.dart';
+import '../core/providers/providers.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
 import 'router.dart';
 
-class App extends ConsumerWidget {
+class App extends ConsumerStatefulWidget {
   const App({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<App> createState() => _AppState();
+}
+
+class _AppState extends ConsumerState<App> {
+  PresencePingService? _presence;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Start presence pings a moment after startup so providers are ready.
+    Future.microtask(() {
+      if (!mounted) return;
+      final apiClient = ref.read(apiClientProvider);
+      _presence = PresencePingService(apiClient: apiClient);
+      _presence?.start();
+    });
+  }
+
+  @override
+  void dispose() {
+    _presence?.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.read(appRouterProvider);
     final themeState = ref.watch(themeControllerProvider);
 

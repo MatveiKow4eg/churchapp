@@ -103,6 +103,10 @@ model User {
   avatarConfig    Json?
   avatarUpdatedAt DateTime?
 
+  /// Last activity timestamp used to approximate "online" users.
+  /// Updated by authenticated client pings.
+  lastSeenAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

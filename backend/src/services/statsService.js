@@ -115,8 +115,11 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
 async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
   const { start, end } = parseMonthRange(monthYYYYMM);
 
+  const onlineCutoff = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
+
   const [
     activeUsersCount,
+    onlineUsersCount,
     approvedSubmissionsCount,
     pendingSubmissionsCount,
     monthlyChurchEntries,
@@ -127,6 +130,13 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       where: {
         churchId,
         status: 'ACTIVE'
+      }
+    }),
+    prisma.user.count({
+      where: {
+        churchId,
+        status: 'ACTIVE',
+        lastSeenAt: { gte: onlineCutoff }
       }
     }),
     prisma.submission.count({
@@ -281,6 +291,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
   return {
     month: monthYYYYMM,
     activeUsersCount,
+    onlineUsersCount,
     totalMembersCount,
     approvedSubmissionsCount,
     pendingSubmissionsCount,

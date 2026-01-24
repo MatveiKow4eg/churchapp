@@ -35,6 +35,9 @@ class BibleAnnotationsNotifier extends AsyncNotifier<BibleAnnotations> {
 
     try {
       final rows = await repo.listAll();
+      // Debug logs (temporary): make failures and payload size visible.
+      // ignore: avoid_print
+      print('[ANN] GET /bible/annotations/all -> ${rows.length} items');
 
       // Replace local cache with server snapshot.
       var next = const BibleAnnotations();
@@ -62,14 +65,20 @@ class BibleAnnotationsNotifier extends AsyncNotifier<BibleAnnotations> {
             highlight: color,
             isFavorite: r.isFavorite == true,
             note: r.note,
+            // backend returns updatedAt, but DTO doesn't expose it yet
             updatedAt: null,
           ),
         );
       }
 
       await _persist(next);
-    } catch (_) {
-      // Ignore; offline-first.
+    } catch (e, st) {
+      // Debug logs (temporary)
+      // ignore: avoid_print
+      print('[ANN] syncAllFromServerBestEffort ERROR: $e');
+      // ignore: avoid_print
+      print(st);
+      rethrow;
     }
   }
 

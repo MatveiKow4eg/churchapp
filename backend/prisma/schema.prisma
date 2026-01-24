@@ -75,6 +75,7 @@ model Church {
   joinCode      String            @unique
 
   users         User[]
+  members       ChurchMember[]
   tasks         Task[]
   submissions   Submission[]
   ledgerEntries PointsLedger[]
@@ -98,8 +99,12 @@ model User {
   role      UserRole   @default(USER)
   status    UserStatus @default(ACTIVE)
 
+  /// Legacy: the currently selected/primary church.
+  /// For multi-church membership use [ChurchMember].
   churchId String?
   church   Church? @relation(fields: [churchId], references: [id], onDelete: SetNull)
+
+  memberships ChurchMember[]
 
   submissions   Submission[]
   ledgerEntries PointsLedger[]
@@ -293,6 +298,25 @@ model XpLedger {
   @@index([userId, createdAt])
   @@index([userId, source, createdAt])
   @@index([taskId])
+}
+
+model ChurchMember {
+  id        String   @id @default(cuid())
+
+  userId    String
+  churchId  String
+
+  /// Optional per-church role (e.g. MEMBER|ADMIN). Global User.role stays as-is.
+  role      String   @default("MEMBER")
+
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  church Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, churchId])
+  @@index([churchId])
+  @@index([userId])
 }
 
 model BibleVerseAnnotation {

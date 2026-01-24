@@ -273,6 +273,55 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
           child: const Text('Отмена'),
         ),
+        TextButton(
+          onPressed: _saving
+              ? null
+              : () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) {
+                      return AlertDialog(
+                        title: const Text('Удалить пользователя?'),
+                        content: const Text(
+                          'Пользователь будет удалён полностью. Действие необратимо.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Отмена'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            child: const Text('Удалить'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirm != true) return;
+
+                  setState(() => _saving = true);
+                  try {
+                    await ref.read(superadminApiProvider).deleteUser(id: widget.user.id);
+                    if (!context.mounted) return;
+                    Navigator.of(context).pop(true);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Пользователь удалён')),
+                    );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(e.toString())));
+                  } finally {
+                    if (mounted) setState(() => _saving = false);
+                  }
+                },
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: const Text('Удалить'),
+        ),
         FilledButton(
           onPressed: _saving
               ? null

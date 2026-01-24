@@ -172,6 +172,31 @@ router.patch('/users/:id', async (req, res, next) => {
   }
 });
 
+// DELETE /admin/users/:id
+// Access: SUPERADMIN
+router.delete('/users/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Ensure user exists for predictable 404
+    const exists = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!exists) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+    }
+
+    // Hard delete. Related data is deleted by DB relations (onDelete: Cascade) where configured.
+    await prisma.user.delete({ where: { id } });
+
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // POST /admin/ai/task-title-suggest
 router.post('/ai/task-title-suggest', aiRateLimit, async (req, res, next) => {
   const startedAt = Date.now();

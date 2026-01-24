@@ -8,12 +8,14 @@ class AdminChurchDto {
     required this.id,
     required this.name,
     required this.city,
+    required this.joinCode,
     required this.createdAt,
   });
 
   final String id;
   final String name;
   final String? city;
+  final String joinCode;
   final DateTime createdAt;
 
   factory AdminChurchDto.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class AdminChurchDto {
       id: (json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       city: json['city']?.toString(),
+      joinCode: (json['joinCode'] ?? '').toString(),
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()) ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
@@ -96,6 +99,18 @@ class SuperAdminApi {
     return items;
   }
 
+  Future<AdminChurchDto> rotateJoinCode({required String id}) async {
+    // rotate endpoint is under /churches, not /admin
+    final res = await _client.dio.post('/churches/$id/join-code/rotate');
+    final data = res.data;
+
+    final church = (data is Map ? (data['church'] as Map?) : null)
+            ?.cast<String, dynamic>() ??
+        const <String, dynamic>{};
+
+    return AdminChurchDto.fromJson(church);
+  }
+
   Future<AdminChurchDto> createChurch(
       {required String name, String? city}) async {
     final res = await _client.dio.post(
@@ -153,6 +168,11 @@ class SuperAdminApi {
         const <String, dynamic>{};
 
     return AdminUserDto.fromJson(user);
+  }
+
+  Future<void> deleteUser({required String id}) async {
+    // adminRouter is mounted under /admin, so the full path is /admin/users/:id
+    await _client.dio.delete('/admin/users/$id');
   }
 }
 

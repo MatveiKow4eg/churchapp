@@ -16,6 +16,66 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
   final _nameCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
 
+  Future<void> _showChurchDetails(AdminChurchDto c) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(c.name),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if ((c.city ?? '').trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text('City: ${c.city}'),
+                ),
+              const Text(
+                'Join code',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              SelectableText(
+                c.joinCode.isEmpty ? '—' : c.joinCode,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await ref.read(superadminApiProvider).rotateJoinCode(id: c.id);
+                  if (!mounted) return;
+                  ref.invalidate(superadminChurchesProvider);
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('New join code generated')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to rotate join code: $e')),
+                  );
+                }
+              },
+              child: const Text('Generate new code'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _nameCtrl.dispose();
@@ -151,10 +211,8 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
                       return ListTile(
                         title: Text(c.name),
                         subtitle: Text(c.city ?? ''),
-                        trailing: Text(
-                          c.id,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        trailing: const Icon(Icons.chevron_right, size: 26),
+                        onTap: () => _showChurchDetails(c),
                       );
                     },
                   );

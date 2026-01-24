@@ -74,6 +74,9 @@ model Church {
   /// Code required to join this church. Used only at join-time; does not affect existing members.
   joinCode      String            @unique
 
+  /// Soft-delete flag. Deleted churches are hidden from normal lists.
+  deletedAt     DateTime?
+
   users         User[]
   members       ChurchMember[]
   tasks         Task[]

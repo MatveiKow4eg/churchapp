@@ -99,6 +99,23 @@ class SuperAdminApi {
     return items;
   }
 
+  Future<List<AdminChurchDto>> listDeletedChurches() async {
+    final res = await _client.dio.get('/admin/churches/deleted');
+    final data = res.data;
+
+    final items =
+        (data is Map ? (data['items'] as List? ?? const []) : const [])
+            .whereType<Map>()
+            .map((m) => AdminChurchDto.fromJson(m.cast<String, dynamic>()))
+            .toList(growable: false);
+
+    return items;
+  }
+
+  Future<void> restoreChurch({required String id}) async {
+    await _client.dio.post('/admin/churches/$id/restore');
+  }
+
   Future<AdminChurchDto> rotateJoinCode({required String id}) async {
     // rotate endpoint is under /churches, not /admin
     final res = await _client.dio.post('/churches/$id/join-code/rotate');

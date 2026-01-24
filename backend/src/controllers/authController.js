@@ -145,6 +145,11 @@ async function me(req, res, next) {
       ? await prisma.church.findUnique({ where: { id: user.churchId } })
       : null;
 
+    // If user's church was soft-deleted, treat it as "no church" for the client.
+    if (church && church.deletedAt != null) {
+      user.churchId = null;
+    }
+
     let balance = undefined;
     if (user.churchId) {
       try {

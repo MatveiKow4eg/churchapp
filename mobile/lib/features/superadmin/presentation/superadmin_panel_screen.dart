@@ -248,7 +248,70 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
     final isCreating = createState.isLoading;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('SuperAdmin Panel')),
+      appBar: AppBar(
+        title: const Text('SuperAdmin Panel'),
+        actions: [
+          IconButton(
+            tooltip: 'Trash',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              final deleted = await ref.read(superadminApiProvider).listDeletedChurches();
+              if (!context.mounted) return;
+
+              await showDialog<void>(
+                context: context,
+                builder: (ctx) {
+                  return AlertDialog(
+                    title: const Text('Корзина (удалённые церкви)'),
+                    content: SizedBox(
+                      width: 520,
+                      child: deleted.isEmpty
+                          ? const Text('Корзина пуста')
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: deleted.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (context, i) {
+                                final c = deleted[i];
+                                return ListTile(
+                                  title: Text(c.name),
+                                  subtitle: Text(c.city ?? ''),
+                                  trailing: TextButton(
+                                    onPressed: () async {
+                                      try {
+                                        await ref.read(superadminApiProvider).restoreChurch(id: c.id);
+                                        if (!context.mounted) return;
+                                        ref.invalidate(superadminChurchesProvider);
+                                        Navigator.of(ctx).pop();
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text('Церковь восстановлена')),
+                                        );
+                                      } catch (e) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Не удалось восстановить: $e')),
+                                        );
+                                      }
+                                    },
+                                    child: const Text('Восстановить'),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('Закрыть'),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          )
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

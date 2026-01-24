@@ -93,11 +93,58 @@ router.post('/churches', validate({ body: createChurchSchema }), async (req, res
 router.get('/churches', async (req, res, next) => {
   try {
     const items = await prisma.church.findMany({
+      where: { deletedAt: null },
       orderBy: [{ createdAt: 'desc' }],
       select: { id: true, name: true, city: true, joinCode: true, createdAt: true }
     });
 
     return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /admin/churches/deleted
+// Access: SUPERADMIN
+router.get('/churches/deleted', async (req, res, next) => {
+  try {
+    const items = await prisma.church.findMany({
+      where: { deletedAt: { not: null } },
+      orderBy: [{ deletedAt: 'desc' }],
+      take: 20,
+      select: { id: true, name: true, city: true, joinCode: true, createdAt: true, deletedAt: true }
+    });
+
+    return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /admin/churches/:id/restore
+// Access: SUPERADMIN
+router.post('/churches/:id/restore', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const church = await prisma.church.findUnique({
+      where: { id },
+      select: { id: true, deletedAt: true }
+    });
+
+    if (!church) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Church not found' } });
+    }
+
+    if (church.deletedAt == null) {
+      return res.status(400).json({ error: { code: 'NOT_DELETED', message: 'Church is not deleted' } });
+    }
+
+    await prisma.church.update({
+      where: { id },
+      data: { deletedAt: null }
+    });
+
+    return res.status(200).json({ ok: true });
   } catch (err) {
     return next(err);
   }
@@ -135,7 +182,11 @@ router.delete('/churches/:id', async (req, res, next) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Church not found' } });
     }
 
-    await prisma.church.delete({ where: { id } });
+    // Soft-delete (move to "trash")
+    await prisma.church.update({
+      where: { id },
+      data: { deletedAt: new Date() }
+    });
     return res.status(204).send();
   } catch (err) {
     return next(err);

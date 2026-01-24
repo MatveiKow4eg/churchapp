@@ -62,6 +62,18 @@ async function requireAuth(req, res, next) {
       select: { id: true, role: true, churchId: true, status: true }
     });
 
+    // If current church is soft-deleted, treat as no church.
+    // This makes client redirect user to church selection.
+    if (dbUser?.churchId) {
+      const church = await prisma.church.findUnique({
+        where: { id: dbUser.churchId },
+        select: { id: true, deletedAt: true }
+      });
+      if (church && church.deletedAt != null) {
+        dbUser.churchId = null;
+      }
+    }
+
     if (!dbUser) {
       throw new HttpError(401, 'UNAUTHORIZED', 'User not found');
     }

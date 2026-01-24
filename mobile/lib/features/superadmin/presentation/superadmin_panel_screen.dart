@@ -124,6 +124,90 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
                 label: const Text('Generate new code'),
               ),
             ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () async {
+                  final ctrl = TextEditingController();
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (confirmCtx) {
+                      return AlertDialog(
+                        title: const Text('Удалить церковь?'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Это действие удалит церковь и ВСЕ связанные данные (задания, заявки, баланс и т.д.).\n\n'
+                              'Чтобы подтвердить, напишите слово: "удалить"',
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: ctrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Подтверждение',
+                                border: OutlineInputBorder(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(confirmCtx).pop(false),
+                            child: const Text('Отмена'),
+                          ),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.error,
+                              foregroundColor: Theme.of(context).colorScheme.onError,
+                            ),
+                            onPressed: () => Navigator.of(confirmCtx).pop(true),
+                            child: const Text('Удалить'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirmed != true) return;
+
+                  final word = ctrl.text.trim().toLowerCase();
+                  if (word != 'удалить') {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Нужно написать слово "удалить"')),
+                    );
+                    return;
+                  }
+
+                  try {
+                    await ref.read(superadminApiProvider).deleteChurch(
+                          id: c.id,
+                          confirm: word,
+                        );
+                    if (!mounted) return;
+                    ref.invalidate(superadminChurchesProvider);
+                    Navigator.of(ctx).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Церковь удалена')),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Не удалось удалить церковь: $e')),
+                    );
+                  }
+                },
+                label: const Text('Удалить церковь'),
+              ),
+            ),
           ],
         );
       },

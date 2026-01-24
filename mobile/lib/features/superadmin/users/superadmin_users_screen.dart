@@ -12,6 +12,8 @@ import '../../../core/providers/providers.dart';
 // null means "not chosen yet"; we will auto-select current church.
 final _selectedChurchIdProvider = StateProvider<String?>((ref) => null);
 
+final _selectedRoleProvider = StateProvider<String?>((ref) => null);
+
 class SuperAdminUsersScreen extends ConsumerStatefulWidget {
   const SuperAdminUsersScreen({super.key});
 
@@ -75,40 +77,98 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
               // If we have no current church (unlikely for superadmin), default to ALL.
               final selectedChurchId = initialSelected;
 
-              final filtered = selectedChurchId == '__ALL__'
-                  ? users
-                  : users.where((u) => u.churchId == selectedChurchId).toList(growable: false);
+              final roleOptions = const <String>['__ALL__', 'USER', 'ADMIN', 'SUPERADMIN'];
+              final selectedRoleState = ref.watch(_selectedRoleProvider);
+              final selectedRole = selectedRoleState ?? '__ALL__';
+
+              final filtered = users
+                  .where((u) => selectedChurchId == '__ALL__' || u.churchId == selectedChurchId)
+                  .where((u) => selectedRole == '__ALL__' || u.role.trim().toUpperCase() == selectedRole)
+                  .toList(growable: false);
+
+              // Sort by role priority, then by lastName/firstName for stable grouping.
+              final rolePriority = <String, int>{
+                'SUPERADMIN': 0,
+                'ADMIN': 1,
+                'USER': 2,
+              };
+              filtered.sort((a, b) {
+                final pa = rolePriority[a.role.trim().toUpperCase()] ?? 99;
+                final pb = rolePriority[b.role.trim().toUpperCase()] ?? 99;
+                if (pa != pb) return pa.compareTo(pb);
+
+                final la = a.lastName.trim().toLowerCase();
+                final lb = b.lastName.trim().toLowerCase();
+                final cmpL = la.compareTo(lb);
+                if (cmpL != 0) return cmpL;
+
+                final fa = a.firstName.trim().toLowerCase();
+                final fb = b.firstName.trim().toLowerCase();
+                final cmpF = fa.compareTo(fb);
+                if (cmpF != 0) return cmpF;
+
+                return a.id.compareTo(b.id);
+              });
 
               return Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Row(
+                    child: Column(
                       children: [
-                        const Text('Церковь:'),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButton<String>(
-                            isExpanded: true,
-                            value: selectedChurchId,
-                            items: allChurches
-                                .map(
-                                  (c) => DropdownMenuItem<String>(
-                                    value: c.id,
-                                    child: Text(
-                                      c.id == '__ALL__'
-                                          ? c.name
-                                          : '${c.name}${(c.city ?? '').trim().isNotEmpty ? ' (${c.city})' : ''}',
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                )
-                                .toList(growable: false),
-                            onChanged: (v) {
-                              if (v == null) return;
-                              ref.read(_selectedChurchIdProvider.notifier).state = v;
-                            },
-                          ),
+                        Row(
+                          children: [
+                            const Text('Церковь:'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: selectedChurchId,
+                                items: allChurches
+                                    .map(
+                                      (c) => DropdownMenuItem<String>(
+                                        value: c.id,
+                                        child: Text(
+                                          c.id == '__ALL__'
+                                              ? c.name
+                                              : '${c.name}${(c.city ?? '').trim().isNotEmpty ? ' (${c.city})' : ''}',
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  ref.read(_selectedChurchIdProvider.notifier).state = v;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Text('Роль:'),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: selectedRole,
+                                items: roleOptions
+                                    .map(
+                                      (r) => DropdownMenuItem<String>(
+                                        value: r,
+                                        child: Text(r == '__ALL__' ? 'Все роли' : r),
+                                      ),
+                                    )
+                                    .toList(growable: false),
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  ref.read(_selectedRoleProvider.notifier).state = v;
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

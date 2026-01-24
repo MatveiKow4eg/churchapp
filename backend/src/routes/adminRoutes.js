@@ -103,6 +103,34 @@ router.get('/churches', async (req, res, next) => {
   }
 });
 
+// DELETE /admin/churches/:id
+// Access: SUPERADMIN
+// DANGER: deletes church and all related data (tasks, submissions, ledger, etc.)
+router.delete('/churches/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { confirm } = req.body ?? {};
+
+    if ((confirm ?? '').toString().trim().toLowerCase() !== 'удалить') {
+      return res.status(400).json({ error: { code: 'CONFIRM_REQUIRED', message: 'Type "удалить" to confirm' } });
+    }
+
+    const exists = await prisma.church.findUnique({
+      where: { id },
+      select: { id: true }
+    });
+
+    if (!exists) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Church not found' } });
+    }
+
+    await prisma.church.delete({ where: { id } });
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // GET /admin/users
 // Access: SUPERADMIN
 router.get('/users', async (req, res, next) => {

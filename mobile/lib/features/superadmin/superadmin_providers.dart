@@ -111,6 +111,15 @@ class SuperAdminApi {
     return AdminChurchDto.fromJson(church);
   }
 
+  Future<void> deleteChurch({required String id, required String confirm}) async {
+    await _client.dio.delete(
+      '/admin/churches/$id',
+      data: {
+        'confirm': confirm,
+      },
+    );
+  }
+
   Future<AdminChurchDto> createChurch(
       {required String name, String? city}) async {
     final res = await _client.dio.post(

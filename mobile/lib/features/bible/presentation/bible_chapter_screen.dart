@@ -366,6 +366,20 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
             }
           }
 
+          // Best-effort: sync annotations for this chapter from server.
+          // This runs after the first frame to avoid blocking initial render.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ref
+                .read(bibleAnnotationsProvider.notifier)
+                .syncFromServerChapter(
+                  translationId: 'rus_syn',
+                  bookId: widget.bookId,
+                  chapter: _chapterNumber,
+                )
+                .catchError((_) {});
+          });
+
           final annotationsAsync = ref.watch(bibleAnnotationsProvider);
           final annotations = annotationsAsync.value ?? const BibleAnnotations();
 

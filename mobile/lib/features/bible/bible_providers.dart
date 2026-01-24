@@ -8,20 +8,16 @@ import 'bible_repository.dart';
 final bibleApiClientProvider = Provider<BibleApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
 
-    if (config.baseUrl.isEmpty) {
+  if (config.baseUrl.isEmpty) {
     throw StateError('BibleApiClient requested while baseUrl is empty (not configured)');
   }
 
-  // Separate Dio instance WITHOUT auth interceptor.
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: config.baseUrl,
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 20),
-    ),
-  );
-
-  return BibleApiClient(dio: dio);
+  // IMPORTANT:
+  // Bible endpoints include both public (text/search) and protected endpoints
+  // (annotations). Use the shared ApiClient's Dio so Authorization header is
+  // attached automatically.
+  final apiClient = ref.watch(apiClientProvider);
+  return BibleApiClient(dio: apiClient.dio);
 });
 
 final bibleRepositoryProvider = Provider<BibleRepository>((ref) {

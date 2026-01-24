@@ -39,7 +39,11 @@ class PresencePingService {
 
   Future<void> _pingOnce() async {
     try {
-      await _apiClient.dio.post('/me/ping');
+      final res = await _apiClient.dio.post('/me/ping');
+      if (kDebugMode) {
+        // ignore: avoid_print
+        print('[presence] ping ok: ${res.data}');
+      }
     } catch (e) {
       // Presence ping must never break the app.
       if (kDebugMode) {

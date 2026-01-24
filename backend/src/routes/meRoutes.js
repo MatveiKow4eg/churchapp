@@ -102,12 +102,15 @@ meRouter.post('/ping', requireAuth, async (req, res, next) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
+    const now = new Date();
+
     await prisma.user.update({
       where: { id: userId },
-      data: { lastSeenAt: new Date() }
+      data: { lastSeenAt: now }
     });
 
-    return res.json({ ok: true });
+    // Return timestamp for easier debugging on client/server.
+    return res.json({ ok: true, lastSeenAt: now.toISOString() });
   } catch (err) {
     return next(err);
   }

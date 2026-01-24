@@ -178,6 +178,11 @@ router.delete('/users/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    // Disallow deleting yourself to avoid locking out the only superadmin.
+    if (req.user?.id === id) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Cannot delete yourself' } });
+    }
+
     // Ensure user exists for predictable 404
     const exists = await prisma.user.findUnique({
       where: { id },
@@ -192,6 +197,40 @@ router.delete('/users/:id', async (req, res, next) => {
     await prisma.user.delete({ where: { id } });
 
     return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /admin/impersonate
+// Access: SUPERADMIN
+// Issues a new token for the same user but with a selected churchId (no DB changes).
+router.post('/impersonate', async (req, res, next) => {
+  try {
+    const { churchId } = req.body ?? {};
+
+    if (churchId == null || (churchId ?? '').toString().trim().isEmpty) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'churchId is required' } });
+    }
+
+    const church = await prisma.church.findUnique({
+      where: { id: churchId.toString() },
+      select: { id: true }
+    });
+
+    if (!church) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Church not found' } });
+    }
+
+    const { signAccessToken } = require('../utils/jwt');
+
+    const token = signAccessToken({
+      userId: req.user.id,
+      role: req.user.role,
+      churchId: church.id
+    });
+
+    return res.json({ token });
   } catch (err) {
     return next(err);
   }

@@ -174,6 +174,22 @@ class SuperAdminApi {
     // adminRouter is mounted under /admin, so the full path is /admin/users/:id
     await _client.dio.delete('/admin/users/$id');
   }
+
+  Future<String> impersonate({required String churchId}) async {
+    final res = await _client.dio.post(
+      '/admin/impersonate',
+      data: {
+        'churchId': churchId,
+      },
+    );
+
+    final data = res.data;
+    if (data is Map && data['token'] != null) {
+      return data['token'].toString();
+    }
+
+    throw Exception('Invalid response: token missing');
+  }
 }
 
 final superadminChurchesProvider =

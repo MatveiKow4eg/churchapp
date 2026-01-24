@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/session_providers.dart';
 import '../../auth/user_session_provider.dart';
 import '../superadmin_providers.dart';
 
@@ -51,6 +52,34 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Close'),
             ),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  final token = await ref
+                      .read(superadminApiProvider)
+                      .impersonate(churchId: c.id);
+                  await ref.read(authTokenProvider.notifier).setToken(token);
+
+                  if (!mounted) return;
+
+                  // Refresh session so router/guards see new churchId.
+                  await ref.read(currentUserProvider.notifier).loadMe();
+                  ref.invalidate(currentUserProvider);
+
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Switched church context')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to switch church: $e')),
+                  );
+                }
+              },
+              child: const Text('Switch to this church'),
+            ),
+            const SizedBox(width: 8),
             FilledButton(
               onPressed: () async {
                 try {

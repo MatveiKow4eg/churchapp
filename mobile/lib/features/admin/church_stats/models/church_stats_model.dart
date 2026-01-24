@@ -9,6 +9,7 @@ class ChurchStatsModel {
     required this.totalPointsSpent,
     required this.topUsers,
     required this.topTasks,
+    required this.topCategories,
     required this.members,
   });
 
@@ -21,6 +22,7 @@ class ChurchStatsModel {
   final int totalPointsSpent;
   final List<ChurchTopUser> topUsers;
   final List<ChurchTopTask> topTasks;
+  final List<ChurchTopCategory> topCategories;
   final List<ChurchMember> members;
 
   int get netPoints => totalPointsEarned - totalPointsSpent;
@@ -28,6 +30,7 @@ class ChurchStatsModel {
   factory ChurchStatsModel.fromJson(Map<String, dynamic> json) {
     final topUsersRaw = json['topUsers'];
     final topTasksRaw = json['topTasks'];
+    final topCategoriesRaw = json['topCategories'];
     final membersRaw = json['members'];
 
     return ChurchStatsModel(
@@ -52,6 +55,14 @@ class ChurchStatsModel {
           ? topTasksRaw
               .whereType<Map>()
               .map((m) => ChurchTopTask.fromJson(
+                    m.map((k, v) => MapEntry(k.toString(), v)),
+                  ))
+              .toList()
+          : const [],
+      topCategories: (topCategoriesRaw is List)
+          ? topCategoriesRaw
+              .whereType<Map>()
+              .map((m) => ChurchTopCategory.fromJson(
                     m.map((k, v) => MapEntry(k.toString(), v)),
                   ))
               .toList()
@@ -187,6 +198,20 @@ class ChurchUserShort {
       lastName: (json['lastName'] ?? '').toString(),
       avatarConfig: avatarConfig,
       avatarUpdatedAt: avatarUpdatedAt,
+    );
+  }
+}
+
+class ChurchTopCategory {
+  const ChurchTopCategory({required this.category, required this.approvedCount});
+
+  final String category;
+  final int approvedCount;
+
+  factory ChurchTopCategory.fromJson(Map<String, dynamic> json) {
+    return ChurchTopCategory(
+      category: (json['category'] ?? '').toString(),
+      approvedCount: (json['approvedCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

@@ -69,8 +69,12 @@ class XpProgressCard extends ConsumerWidget {
                 : xp.levelName;
 
             final cats = xp.categories;
-            final values = cats.values.toList();
-            final max = values.isEmpty ? 0 : values.reduce((a, b) => a > b ? a : b);
+
+            // Progress for each category should be relative to its own next milestone,
+            // not to the current max among categories.
+            // We use nextLevelXp as a stable denominator to get gradual filling.
+            // Fallback to 1 to avoid division by zero.
+            final int denom = (xp.nextLevelXp > 0) ? xp.nextLevelXp : 1;
 
             final remainingXp = (xp.nextLevelXp - xp.levelXp);
             final remainingXpSafe = remainingXp < 0 ? 0 : remainingXp;
@@ -89,7 +93,7 @@ class XpProgressCard extends ConsumerWidget {
               required String title,
               required int value,
             }) {
-              final v = (max <= 0) ? 0.0 : (value / max).clamp(0.0, 1.0);
+              final v = (value / denom).clamp(0.0, 1.0);
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Column(

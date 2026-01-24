@@ -10,6 +10,7 @@ import '../models/church_stats_model.dart';
 import '../../../avatar/presentation/avatar_thumb_image.dart';
 import '../../../avatar/dicebear/dicebear_url.dart';
 import '../../../../core/providers/providers.dart';
+import '../../../../core/ui/task_category_i18n.dart';
 
 class ChurchStatsScreen extends ConsumerStatefulWidget {
   const ChurchStatsScreen({super.key});
@@ -50,10 +51,35 @@ class _ChurchStatsScreenState extends ConsumerState<ChurchStatsScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _MonthSelector(
-                title: _prettyMonth(stats.month),
-                onPrev: prevMonth,
-                onNext: nextMonth,
+              Row(
+                children: [
+                  Expanded(
+                    child: _MonthSelector(
+                      title: _prettyMonth(stats.month),
+                      onPrev: prevMonth,
+                      onNext: nextMonth,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final current = ref.read(selectedChurchStatsMonthProvider);
+                        if (current.toLowerCase() == 'all') {
+                          final now = DateTime.now();
+                          final y = now.year.toString().padLeft(4, '0');
+                          final m = now.month.toString().padLeft(2, '0');
+                          ref.read(selectedChurchStatsMonthProvider.notifier).state = '$y-$m';
+                        } else {
+                          ref.read(selectedChurchStatsMonthProvider.notifier).state = 'all';
+                        }
+                      },
+                      icon: Icon(month.toLowerCase() == 'all' ? Icons.filter_alt_off : Icons.all_inclusive),
+                      label: Text(month.toLowerCase() == 'all' ? 'Месяц' : 'Все месяцы'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               _StatsGrid(stats: stats),
@@ -78,9 +104,9 @@ class _ChurchStatsScreenState extends ConsumerState<ChurchStatsScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-              if (stats.topTasks.isNotEmpty) ...[
+              if (stats.topCategories.isNotEmpty) ...[
                 Text(
-                  'Топ заданий (APPROVED)',
+                  'Топ категорий (APPROVED)',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -91,7 +117,7 @@ class _ChurchStatsScreenState extends ConsumerState<ChurchStatsScreen> {
                     padding: const EdgeInsets.all(14),
                     child: Column(
                       children: [
-                        for (final t in stats.topTasks) _TopTaskRow(item: t),
+                        for (final c in stats.topCategories) _TopCategoryRow(item: c),
                       ],
                     ),
                   ),
@@ -194,6 +220,13 @@ class _ChurchStatsScreenState extends ConsumerState<ChurchStatsScreen> {
           },
           icon: const Icon(Icons.arrow_back),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: body,
     );
@@ -463,16 +496,16 @@ class _MemberRow extends ConsumerWidget {
   }
 }
 
-class _TopTaskRow extends StatelessWidget {
-  const _TopTaskRow({required this.item});
+class _TopCategoryRow extends StatelessWidget {
+  const _TopCategoryRow({required this.item});
 
-  final ChurchTopTask item;
+  final ChurchTopCategory item;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final title = item.task.title.trim().isEmpty ? '—' : item.task.title.trim();
+    final title = localizeTaskCategory(item.category);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -480,7 +513,7 @@ class _TopTaskRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              title,
+              title.isEmpty ? '—' : title,
               style: theme.textTheme.bodyMedium,
             ),
           ),
@@ -545,6 +578,7 @@ String _toYYYYMM(DateTime dt) {
 }
 
 String _prettyMonth(String monthYYYYMM) {
+  if (monthYYYYMM.toLowerCase() == 'all') return 'За всё время';
   final dt = _parseYYYYMM(monthYYYYMM);
   const names = [
     'Январь',

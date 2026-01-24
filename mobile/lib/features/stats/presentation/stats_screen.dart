@@ -8,6 +8,7 @@ import '../models/user_stats_model.dart';
 import '../stats_providers.dart';
 import '../../../core/ui/task_category_i18n.dart';
 import 'xp_progress_card.dart';
+import '../../profile/profile_providers.dart';
 
 class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
@@ -18,6 +19,22 @@ class StatsScreen extends ConsumerStatefulWidget {
 
 class _StatsScreenState extends ConsumerState<StatsScreen> {
   bool _didRedirect = false;
+  bool _didInitialRefresh = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Trigger initial refresh once when the screen becomes active
+    if (!_didInitialRefresh) {
+      _didInitialRefresh = true;
+      // Post-frame to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(myStatsProvider.notifier).refresh();
+        ref.invalidate(myXpStatusProvider);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +64,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         return RefreshIndicator(
           onRefresh: onRefresh,
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
               const XpProgressCard(),
@@ -84,6 +102,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         );
       },
       loading: () => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
           _MonthSelector(
@@ -117,6 +136,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             : 'Не удалось загрузить статистику';
 
         return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           children: [
             _MonthSelector(
@@ -148,6 +168,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           },
           icon: const Icon(Icons.arrow_back),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
       body: body,
     );

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../app/router.dart';
 import '../../avatar/avatar_providers.dart';
 import '../../avatar/presentation/avatar_thumb_image.dart';
 import '../../../core/errors/app_error.dart';
 import '../../tasks/tasks_providers.dart';
-import '../../auth/user_session_provider.dart';
 import '../../../core/ui/task_category_i18n.dart';
 import '../../../core/ui/bible_refs.dart';
 
@@ -33,8 +31,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       await ref.read(tasksListProvider.notifier).refresh();
     }
 
-    void goShop() => context.go(AppRoutes.shop);
-    void goStats() => context.go(AppRoutes.stats);
 
     Widget body;
 
@@ -96,7 +92,6 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
       },
     );
 
-    final isAdmin = ref.watch(isAdminProvider);
 
     return Scaffold(
       appBar: AppBar(

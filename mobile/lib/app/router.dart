@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../core/providers/providers.dart';
 import '../features/admin/presentation/admin_panel_screen.dart';
 import '../features/superadmin/presentation/superadmin_panel_screen.dart';
 import '../features/superadmin/users/superadmin_users_screen.dart';
@@ -435,20 +433,6 @@ abstract final class AppRoutes {
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
   static const adminChurchStats = '/admin/church-stats';
-}
-
-class _InDevelopmentScreen extends StatelessWidget {
-  const _InDevelopmentScreen({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: const Center(child: Text('В разработке')),
-    );
-  }
 }
 
 class _ProfileScreenPlaceholder extends ConsumerWidget {

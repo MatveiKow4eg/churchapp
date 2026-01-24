@@ -85,8 +85,17 @@ async function upsertUserAnnotations(userId, items) {
 
     if (empty) {
       // Delete if exists, ignore if missing.
+      // Use deleteMany to avoid Prisma transaction error when chaining .catch().
       ops.push(
-        prisma.bibleVerseAnnotation.delete({ where }).catch(() => null),
+        prisma.bibleVerseAnnotation.deleteMany({
+          where: {
+            userId,
+            translationId,
+            bookId,
+            chapter,
+            verse,
+          },
+        }),
       );
       continue;
     }
@@ -116,8 +125,10 @@ async function upsertUserAnnotations(userId, items) {
   }
 
   const results = await prisma.$transaction(ops);
-  // Filter out nulls (from delete ignore)
-  return results.filter(Boolean);
+
+  // deleteMany returns { count }, upsert returns the row.
+  // Only return actual rows.
+  return results.filter((r) => r && typeof r === 'object' && 'id' in r);
 }
 
 module.exports = {

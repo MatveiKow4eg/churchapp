@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../errors/app_error.dart';
 
@@ -76,10 +77,12 @@ class _JwtAuthInterceptor extends Interceptor {
     }
 
     // DEBUG: trace whether Authorization header is attached (do NOT print token).
-    // ignore: avoid_print
-    print(
-      '[dio] ${options.method} ${options.path} authHeader=${options.headers['Authorization'] != null}',
-    );
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print(
+        '[dio] ${options.method} ${options.path} authHeader=${options.headers['Authorization'] != null}',
+      );
+    }
 
     handler.next(options);
   }

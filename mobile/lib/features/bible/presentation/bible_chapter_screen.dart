@@ -91,6 +91,9 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
   late int _chapterNumber;
   String? _lastSavedKey;
 
+  // Avoid spamming sync calls on rebuilds.
+  String? _lastAnnotationsSyncKey;
+
   Future<dynamic>? _chapterFuture;
 
   /// Multi-select verses for copying.
@@ -367,18 +370,22 @@ class _BibleChapterScreenState extends ConsumerState<BibleChapterScreen> {
           }
 
           // Best-effort: sync annotations for this chapter from server.
-          // This runs after the first frame to avoid blocking initial render.
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            ref
-                .read(bibleAnnotationsProvider.notifier)
-                .syncFromServerChapter(
-                  translationId: 'rus_syn',
-                  bookId: widget.bookId,
-                  chapter: _chapterNumber,
-                )
-                .catchError((_) {});
-          });
+          // Do it once per (bookId, chapter) to avoid spamming on rebuilds.
+          final syncKey = '${widget.bookId}:$_chapterNumber';
+          if (_lastAnnotationsSyncKey != syncKey) {
+            _lastAnnotationsSyncKey = syncKey;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              ref
+                  .read(bibleAnnotationsProvider.notifier)
+                  .syncFromServerChapter(
+                    translationId: 'rus_syn',
+                    bookId: widget.bookId,
+                    chapter: _chapterNumber,
+                  )
+                  .catchError((_) {});
+            });
+          }
 
           final annotationsAsync = ref.watch(bibleAnnotationsProvider);
           final annotations = annotationsAsync.value ?? const BibleAnnotations();

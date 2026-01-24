@@ -45,11 +45,10 @@ async function getChurchStats(req, res, next) {
       monthYYYYMM: month
     });
 
-    const { topTasks, members, ...rest } = stats;
+    const { members, ...rest } = stats;
 
     return res.status(200).json({
       ...rest,
-      ...(topTasks && topTasks.length > 0 ? { topTasks } : {}),
       ...(members && members.length > 0 ? { members } : { members: [] })
     });
   } catch (err) {

@@ -10,7 +10,10 @@ class HttpError extends Error {
 }
 
 function parseMonthRange(monthYYYYMM) {
-  // monthYYYYMM: "2026-01" (validated by zod in controller)
+  // Accepts 'all' or 'YYYY-MM'
+  if (typeof monthYYYYMM === 'string' && monthYYYYMM.toLowerCase() === 'all') {
+    return { start: null, end: null };
+  }
   const [y, mm] = monthYYYYMM.split('-').map((x) => Number(x));
   const start = new Date(Date.UTC(y, mm - 1, 1, 0, 0, 0, 0));
   const end = new Date(Date.UTC(y, mm, 1, 0, 0, 0, 0));
@@ -30,14 +33,14 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'APPROVED',
-        decidedAt: { gte: start, lt: end }
+        ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
     prisma.pointsLedger.findMany({
       where: {
         userId,
         churchId,
-        createdAt: { gte: start, lt: end }
+        ...(start && end ? { createdAt: { gte: start, lt: end } } : {})
       },
       select: { amount: true }
     }),
@@ -51,7 +54,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'APPROVED',
-        decidedAt: { gte: start, lt: end }
+        ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       },
       _count: { taskId: true }
     })
@@ -130,7 +133,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       where: {
         churchId,
         status: 'APPROVED',
-        decidedAt: { gte: start, lt: end }
+        ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
     // MVP choice: pending = current queue (no month filter)
@@ -143,7 +146,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     prisma.pointsLedger.findMany({
       where: {
         churchId,
-        createdAt: { gte: start, lt: end }
+        ...(start && end ? { createdAt: { gte: start, lt: end } } : {})
       },
       select: {
         userId: true,
@@ -154,7 +157,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       by: ['userId'],
       where: {
         churchId,
-        createdAt: { gte: start, lt: end }
+        ...(start && end ? { createdAt: { gte: start, lt: end } } : {})
       },
       _sum: { amount: true }
     }),
@@ -163,7 +166,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
       where: {
         churchId,
         status: 'APPROVED',
-        decidedAt: { gte: start, lt: end }
+        ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       },
       _count: { taskId: true },
       orderBy: {
@@ -255,6 +258,26 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     }
   });
 
+  // Derive topCategories from per-task counts
+  let topCategories = [];
+  if (taskIds.length > 0) {
+    const taskCategory = await prisma.task.findMany({
+      where: { id: { in: taskIds } },
+      select: { id: true, category: true }
+    });
+    const catByTaskId = new Map(taskCategory.map((t) => [t.id, t.category]));
+    const counts = new Map();
+    for (const row of topTasksAgg) {
+      const cat = catByTaskId.get(row.taskId);
+      if (!cat) continue;
+      counts.set(cat, (counts.get(cat) || 0) + row._count.taskId);
+    }
+    topCategories = Array.from(counts.entries())
+      .map(([category, approvedCount]) => ({ category, approvedCount }))
+      .sort((a, b) => b.approvedCount - a.approvedCount)
+      .slice(0, 10);
+  }
+
   return {
     month: monthYYYYMM,
     activeUsersCount,
@@ -265,6 +288,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     totalPointsSpent,
     topUsers,
     topTasks,
+    topCategories,
     members
   };
 }

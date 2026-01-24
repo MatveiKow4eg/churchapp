@@ -187,6 +187,15 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
                     return;
                   }
 
+                  final activeChurchId = ref.read(currentUserProvider).valueOrNull?.churchId;
+                  if (activeChurchId != null && activeChurchId == c.id) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Нельзя удалять церковь, в которой вы сейчас находитесь')),
+                    );
+                    return;
+                  }
+
                   try {
                     await ref.read(superadminApiProvider).deleteChurch(
                           id: c.id,

@@ -115,6 +115,17 @@ router.delete('/churches/:id', async (req, res, next) => {
       return res.status(400).json({ error: { code: 'CONFIRM_REQUIRED', message: 'Type "удалить" to confirm' } });
     }
 
+    // Safety: forbid deleting the church you are currently scoped to.
+    // This prevents nuking the active context and causing confusing client state.
+    if (req.user?.churchId && req.user.churchId === id) {
+      return res.status(400).json({
+        error: {
+          code: 'CANNOT_DELETE_ACTIVE_CHURCH',
+          message: 'Cannot delete the church you are currently in'
+        }
+      });
+    }
+
     const exists = await prisma.church.findUnique({
       where: { id },
       select: { id: true }

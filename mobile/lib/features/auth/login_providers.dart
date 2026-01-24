@@ -9,11 +9,12 @@ import 'session_providers.dart';
 
 class LoginRequest {
   const LoginRequest({
-    required this.email,
+    required this.identifier,
     required this.password,
   });
 
-  final String email;
+  /// Email or username.
+  final String identifier;
   final String password;
 }
 
@@ -32,7 +33,7 @@ class LoginController extends AsyncNotifier<void> {
     state = const AsyncLoading();
     try {
       final result = await _repo.login(
-        email: req.email,
+        identifier: req.identifier,
         password: req.password,
       );
 

@@ -10,7 +10,8 @@ class AuthRepository {
   final ApiClient _apiClient;
 
   Future<AuthResult> register({
-    required String email,
+    String? email,
+    String? username,
     required String password,
     required String firstName,
     required String lastName,
@@ -21,7 +22,8 @@ class AuthRepository {
       final res = await _apiClient.dio.post(
         '/auth/register',
         data: {
-          'email': email,
+          if (email != null) 'email': email,
+          if (username != null) 'username': username,
           'password': password,
           'firstName': firstName,
           'lastName': lastName,
@@ -42,14 +44,14 @@ class AuthRepository {
   }
 
   Future<AuthResult> login({
-    required String email,
+    required String identifier,
     required String password,
   }) async {
     try {
       final res = await _apiClient.dio.post(
         '/auth/login',
         data: {
-          'email': email,
+          'identifier': identifier,
           'password': password,
         },
       );

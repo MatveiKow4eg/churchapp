@@ -31,12 +31,15 @@ class AdminPanelScreen extends ConsumerWidget {
         ),
       ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
           ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minVerticalPadding: 18,
             leading: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.fact_check_outlined),
+                const Icon(Icons.fact_check_outlined, size: 26),
                 Positioned(
                   right: -2,
                   top: -2,
@@ -63,9 +66,11 @@ class AdminPanelScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            title: const Text('Заявки на проверку'),
-            subtitle: const Text('Модерация заявок пользователей'),
-            trailing: const Icon(Icons.chevron_right),
+            title: const Text(
+              'Заявки на проверку',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 26),
             onTap: () {
               // When user opens the tab, refresh so the badge reflects the latest DB state.
               ref.read(pendingSubmissionsProvider.notifier).refresh();
@@ -74,43 +79,64 @@ class AdminPanelScreen extends ConsumerWidget {
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.task_outlined),
-            title: const Text('Задания'),
-            subtitle: const Text('Создание и редактирование'),
-            trailing: const Icon(Icons.chevron_right),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minVerticalPadding: 18,
+            leading: const Icon(Icons.task_outlined, size: 26),
+            title: const Text(
+              'Задания',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 26),
             onTap: () => context.go(AppRoutes.adminTasks),
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.storefront_outlined),
-            title: const Text('Предметы магазина'),
-            subtitle: const Text('Скоро'),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minVerticalPadding: 18,
+            leading: const Icon(Icons.storefront_outlined, size: 26),
+            title: const Text(
+              'Предметы магазина',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
             enabled: false,
-            trailing: const Text('Скоро'),
+            trailing: const Text(
+              'Скоро',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.bar_chart_outlined),
-            title: const Text('Статистика церкви'),
-            subtitle: const Text('Отчёт по вашей церкви за месяц'),
-            trailing: const Icon(Icons.chevron_right),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minVerticalPadding: 18,
+            leading: const Icon(Icons.bar_chart_outlined, size: 26),
+            title: const Text(
+              'Статистика церкви',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 26),
             onTap: () => context.go(AppRoutes.adminChurchStats),
           ),
           if (isSuperadmin) ...[
             const Divider(height: 1),
             ListTile(
-              leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('SuperAdmin: церкви'),
-              subtitle: const Text('Создание и список церквей'),
-              trailing: const Icon(Icons.chevron_right),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              minVerticalPadding: 18,
+              leading: const Icon(Icons.admin_panel_settings_outlined, size: 26),
+              title: const Text(
+                'SuperAdmin: церкви',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              trailing: const Icon(Icons.chevron_right, size: 26),
               onTap: () => context.go('${AppRoutes.admin}/superadmin'),
             ),
             const Divider(height: 1),
             ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              minVerticalPadding: 18,
               leading: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  const Icon(Icons.people_alt_outlined),
+                  const Icon(Icons.people_alt_outlined, size: 26),
                   Positioned(
                     right: -2,
                     top: -2,
@@ -143,9 +169,11 @@ class AdminPanelScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              title: const Text('SuperAdmin: пользователи'),
-              subtitle: const Text('Список и редактирование пользователей'),
-              trailing: const Icon(Icons.chevron_right),
+              title: const Text(
+                'SuperAdmin: пользователи',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              trailing: const Icon(Icons.chevron_right, size: 26),
               onTap: () {
                 // Ensure we have fresh state before opening the screen.
                 ref.invalidate(superadminUsersProvider);

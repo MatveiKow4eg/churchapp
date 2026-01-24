@@ -9,15 +9,17 @@ import 'session_providers.dart';
 
 class RegisterRequest {
   const RegisterRequest({
-    required this.email,
+    this.email,
+    this.username,
     required this.password,
     required this.firstName,
     required this.lastName,
     required this.age,
     required this.city,
-  });
+  }) : assert((email != null) ^ (username != null), 'Provide either email or username');
 
-  final String email;
+  final String? email;
+  final String? username;
   final String password;
   final String firstName;
   final String lastName;
@@ -41,6 +43,7 @@ class RegisterController extends AsyncNotifier<void> {
     try {
       final result = await _repo.register(
         email: req.email,
+        username: req.username,
         password: req.password,
         firstName: req.firstName,
         lastName: req.lastName,

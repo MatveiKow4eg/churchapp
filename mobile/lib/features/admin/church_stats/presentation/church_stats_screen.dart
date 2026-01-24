@@ -293,7 +293,7 @@ class _StatsGrid extends StatelessWidget {
         final cards = [
           _StatCard(title: 'Активных', value: '${stats.activeUsersCount}'),
           _StatCard(
-            title: 'Общий онлайн',
+            title: 'Онлайн за неделю',
             value: '${stats.onlineUsersCount}',
           ),
           _StatCard(title: 'Одобрено', value: '${stats.approvedSubmissionsCount}'),

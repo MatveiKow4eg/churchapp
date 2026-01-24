@@ -14,10 +14,11 @@ class HttpError extends Error {
 
 async function register(req, res, next) {
   try {
-    const { firstName, lastName, age, city, email, password } = req.body;
+    const { firstName, lastName, age, city, email, username, password } = req.body;
 
     // Normalize email to keep it case-insensitive across register/login.
-    const normalizedEmail = (email ?? '').trim().toLowerCase();
+    const normalizedEmail = email != null ? (email ?? '').trim().toLowerCase() : null;
+    const normalizedUsername = username != null ? (username ?? '').trim() : null;
 
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -28,6 +29,7 @@ async function register(req, res, next) {
         age,
         city,
         email: normalizedEmail,
+        username: normalizedUsername,
         passwordHash,
         role: 'USER',
         status: 'ACTIVE',
@@ -52,20 +54,27 @@ async function register(req, res, next) {
 
 async function login(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    // Normalize email to avoid accidental login into a different account
-    // that differs only by letter case.
-    const normalizedEmail = (email ?? '').trim().toLowerCase();
+    const rawIdentifier = (identifier ?? '').trim();
+    const normalizedEmail = rawIdentifier.toLowerCase();
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    // Allow login by either email OR username.
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          { username: rawIdentifier }
+        ]
+      },
       select: {
         id: true,
         role: true,
         churchId: true,
         status: true,
-        passwordHash: true
+        passwordHash: true,
+        email: true,
+        username: true
       }
     });
 
@@ -93,7 +102,8 @@ async function login(req, res, next) {
       token,
       user: {
         id: user.id,
-        email: normalizedEmail,
+        email: user.email,
+        username: user.username,
         role: user.role,
         churchId: user.churchId,
         status: user.status

@@ -16,14 +16,14 @@ class RegisterScreen extends ConsumerStatefulWidget {
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _ageController = TextEditingController();
   final _cityController = TextEditingController();
 
-  final _emailFocus = FocusNode();
+  final _identifierFocus = FocusNode();
   final _passwordFocus = FocusNode();
   final _firstNameFocus = FocusNode();
   final _lastNameFocus = FocusNode();
@@ -34,15 +34,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   AutovalidateMode _autoValidateMode = AutovalidateMode.disabled;
   bool _submittedOnce = false;
 
-  static final _emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-
   @override
   void initState() {
     super.initState();
 
     void listen() => _recomputeFormValidity();
 
-    _emailController.addListener(listen);
+    _identifierController.addListener(listen);
     _passwordController.addListener(listen);
     _firstNameController.addListener(listen);
     _lastNameController.addListener(listen);
@@ -54,14 +52,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _ageController.dispose();
     _cityController.dispose();
 
-    _emailFocus.dispose();
+    _identifierFocus.dispose();
     _passwordFocus.dispose();
     _firstNameFocus.dispose();
     _lastNameFocus.dispose();
@@ -84,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   bool _validateLocally() {
-    return _validateEmail(_emailController.text) == null &&
+    return _validateIdentifier(_identifierController.text) == null &&
         _validatePassword(_passwordController.text) == null &&
         _validateNameLike(_firstNameController.text) == null &&
         _validateNameLike(_lastNameController.text) == null &&
@@ -92,10 +90,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _validateNameLike(_cityController.text) == null;
   }
 
-  String? _validateEmail(String? value) {
+  String? _validateIdentifier(String? value) {
     final v = (value ?? '').trim();
     if (v.isEmpty) return 'Обязательное поле';
-    if (!_emailRegex.hasMatch(v)) return 'Некорректный email';
     return null;
   }
 
@@ -136,10 +133,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final controller = ref.read(registerControllerProvider.notifier);
 
+    final identifier = _identifierController.text.trim();
+    final isEmail = identifier.contains('@');
+
     try {
       await controller.register(
         RegisterRequest(
-          email: _emailController.text.trim(),
+          // If it looks like an email, send as email, otherwise as username.
+          email: isEmail ? identifier : null,
+          username: isEmail ? null : identifier,
           password: _passwordController.text,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
@@ -213,15 +215,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     child: Column(
                       children: [
                         TextFormField(
-                          controller: _emailController,
-                          focusNode: _emailFocus,
+                          controller: _identifierController,
+                          focusNode: _identifierFocus,
                           textInputAction: TextInputAction.next,
-                          keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
-                            labelText: 'Email',
+                            labelText: 'Email или логин',
                             border: OutlineInputBorder(),
                           ),
-                          validator: _validateEmail,
+                          validator: _validateIdentifier,
                           enabled: !isLoading,
                           onFieldSubmitted: (_) =>
                               FocusScope.of(context).requestFocus(_passwordFocus),

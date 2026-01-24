@@ -115,7 +115,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
 async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
   const { start, end } = parseMonthRange(monthYYYYMM);
 
-  const onlineCutoff = new Date(Date.now() - 5 * 60 * 1000); // 5 minutes
+  const onlineCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days
 
   const [
     activeUsersCount,

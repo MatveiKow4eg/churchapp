@@ -62,23 +62,26 @@ async function rotateChurchJoinCode(churchId) {
 }
 
 async function searchChurches({ search, limit = 20 }) {
-  const q = search.trim();
+  const q = (search ?? '').trim();
 
-  const where = {
-    OR: [
-      { name: { contains: q, mode: 'insensitive' } },
-      { city: { contains: q, mode: 'insensitive' } }
-    ]
-  };
+  // If no search query provided, return first churches (for "Create church" screen, etc.)
+  const where = q
+    ? {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { city: { contains: q, mode: 'insensitive' } }
+        ]
+      }
+    : undefined;
 
   const [items, total] = await Promise.all([
     prisma.church.findMany({
-      where,
+      ...(where ? { where } : {}),
       take: limit,
       orderBy: [{ name: 'asc' }],
       select: { id: true, name: true, city: true }
     }),
-    prisma.church.count({ where })
+    prisma.church.count(where ? { where } : undefined)
   ]);
 
   return { items, total };

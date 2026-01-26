@@ -20,12 +20,14 @@ final appConfigProvider = Provider<AppConfig>((ref) {
 final apiClientProvider = Provider<ApiClient>((ref) {
   final config = ref.watch(appConfigProvider);
 
-  // Watch token so ApiClient always uses the latest value.
-  final tokenAsync = ref.watch(authTokenProvider);
-
+  // IMPORTANT:
+  // Don't capture `tokenAsync.valueOrNull` in a closure.
+  // That value can be null during provider rebuilds, causing requests (like /me/ping)
+  // to be sent without Authorization even when the user is logged in.
+  // Instead, read the latest token on every request.
   return ApiClient(
     baseUrl: config.baseUrl,
-    getToken: () async => tokenAsync.valueOrNull,
+    getToken: () async => ref.read(authTokenProvider).valueOrNull,
   );
 });
 

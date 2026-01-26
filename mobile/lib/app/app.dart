@@ -5,6 +5,7 @@ import '../core/presence/presence_ping_service.dart';
 import '../core/providers/providers.dart';
 import '../core/theme/app_theme.dart';
 import '../core/theme/theme_controller.dart';
+import '../features/auth/session_providers.dart';
 import 'router.dart';
 
 class App extends ConsumerStatefulWidget {
@@ -21,8 +22,14 @@ class _AppState extends ConsumerState<App> {
   void initState() {
     super.initState();
 
-    // Start presence pings a moment after startup so providers are ready.
-    Future.microtask(() {
+    // Start presence pings only after auth token has been loaded.
+    // Otherwise the first ping(s) are sent without Authorization and spam 401.
+    Future.microtask(() async {
+      if (!mounted) return;
+
+      // Ensure token is loaded from secure storage at least once.
+      await ref.read(authTokenProvider.future);
+
       if (!mounted) return;
       final apiClient = ref.read(apiClientProvider);
       _presence = PresencePingService(apiClient: apiClient);

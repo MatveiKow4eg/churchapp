@@ -1,5 +1,7 @@
-require('dotenv').config({ path: '/var/www/churchapp/backend/.env' });
-
+// Load environment variables.
+// In production you can point ENV_PATH to an absolute .env file.
+// Locally (or if ENV_PATH is not set) dotenv will load backend/.env automatically if present.
+require('dotenv').config({ path: process.env.ENV_PATH });
 
 const { app } = require('./app');
 

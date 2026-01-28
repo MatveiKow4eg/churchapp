@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../auth/user_session_provider.dart';
+import '../../reports/presentation/developer_reports_screen.dart';
 import 'pending_submissions_providers.dart';
 import '../../superadmin/superadmin_providers.dart';
 
@@ -185,13 +186,52 @@ class AdminPanelScreen extends ConsumerWidget {
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 minVerticalPadding: 18,
-                leading: const Icon(Icons.bug_report_outlined, size: 26),
+                leading: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(Icons.bug_report_outlined, size: 26),
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Consumer(
+                        builder: (context, ref, _) {
+                          final async = ref.watch(developerReportsProvider);
+                          final hasNew = async.maybeWhen(
+                            data: (items) {
+                              // Простейшая эвристика "новые репорты": созданные за последние 24 часа.
+                              // (Без серверного флага isRead и без локального хранения lastSeen)
+                              final cutoff =
+                                  DateTime.now().subtract(const Duration(hours: 24));
+                              return items.any((r) => r.createdAt.isAfter(cutoff));
+                            },
+                            orElse: () => false,
+                          );
+
+                          if (!hasNew) return const SizedBox.shrink();
+
+                          return Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
                 title: const Text(
                   'Репорты',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 trailing: const Icon(Icons.chevron_right, size: 26),
-                onTap: () => context.go(AppRoutes.developerReports),
+                onTap: () {
+                  // Перед открытием обновим, чтобы индикатор был актуальным.
+                  ref.invalidate(developerReportsProvider);
+                  context.go(AppRoutes.developerReports);
+                },
               ),
             ],
           ],

@@ -76,4 +76,26 @@ router.get('/', requireAuth, requireDeveloper, async (req, res, next) => {
   }
 });
 
+// DELETE /reports/:id
+// Auth: DEVELOPER only
+router.delete('/:id', requireAuth, requireDeveloper, async (req, res, next) => {
+  try {
+    const id = (req.params.id || '').trim();
+    if (!id) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Missing id' } });
+    }
+
+    // If it doesn't exist, return 204 to keep deletion idempotent
+    const existing = await prisma.report.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) {
+      return res.status(204).send();
+    }
+
+    await prisma.report.delete({ where: { id } });
+    return res.status(204).send();
+  } catch (err) {
+    return next(err);
+  }
+});
+
 module.exports = { reportRouter: router };

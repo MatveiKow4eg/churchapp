@@ -32,6 +32,10 @@ class ReportsApi {
         .map((m) => ReportItem.fromJson(Map<String, dynamic>.from(m)))
         .toList(growable: false);
   }
+
+  Future<void> deleteReport({required String id}) async {
+    await _apiClient.dio.delete('/reports/$id');
+  }
 }
 
 class ReportItem {

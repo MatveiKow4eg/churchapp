@@ -126,14 +126,14 @@ class SettingsScreen extends ConsumerWidget {
 
 final _currentChurchNameProvider = Provider<String>((ref) {
   // /auth/me кэшируется в currentUserProvider.
-  // В мобильной модели UserModel сейчас нет поля `church`, есть только `churchId`.
-  // Поэтому показываем "Не выбрано" или placeholder.
+  // Backend /auth/me возвращает `{ user, church }`, поэтому churchName маппится в UserModel.
   final user = ref.watch(currentUserProvider).valueOrNull;
 
   if (user?.churchId == null) return 'Не выбрано';
 
-  // Если позже добавим в UserModel поле churchName (или church), можно заменить.
-  return '...';
+  // Никогда не показываем ID как "имя". Если backend не прислал объект church,
+  // покажем нейтральный placeholder.
+  return user?.churchLabel ?? '...';
 });
 
 

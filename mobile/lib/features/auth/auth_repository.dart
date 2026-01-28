@@ -76,11 +76,8 @@ class AuthRepository {
         throw const AppError(code: 'bad_response', message: 'Unexpected response');
       }
 
-      final rawUser = data['user'];
-      if (rawUser is Map) {
-        return UserModel.fromJson(rawUser.cast<String, dynamic>());
-      }
-
+      // /auth/me returns an envelope: `{ user, church?, balance? }`.
+      // We need the whole envelope so UserModel can extract optional church fields.
       return UserModel.fromJson(data.cast<String, dynamic>());
     } catch (e) {
       throw ApiClient.mapDioError(e);

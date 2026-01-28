@@ -35,7 +35,7 @@ class _ReportCreateSheetState extends ConsumerState<ReportCreateSheet> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Спасибо! Сообщение отправлено разработчику.')),
+        const SnackBar(content: Text('Спасибо! Сообщение отправлено.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -69,7 +69,7 @@ class _ReportCreateSheetState extends ConsumerState<ReportCreateSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Напиши, что не работает/что нужно улучшить. Это увидит толь��о DEVELOPER.',
+              'Напиши, что не работает/что нужно улучшить.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

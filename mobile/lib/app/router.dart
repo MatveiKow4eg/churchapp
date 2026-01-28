@@ -566,7 +566,6 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.bug_report_outlined),
             title: const Text('Сообщить об ошибке'),
-            subtitle: const Text('Это увидит только DEVELOPER'),
             onTap: () async {
               await showModalBottomSheet<bool>(
                 context: context,

@@ -13,7 +13,7 @@ class AdminPanelScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
-    final isSuperadmin = role == 'SUPERADMIN';
+    final isSuperadmin = role == 'SUPERADMIN' || role == 'DEVELOPER';
 
     return Scaffold(
       appBar: AppBar(
@@ -123,7 +123,7 @@ class AdminPanelScreen extends ConsumerWidget {
               minVerticalPadding: 18,
               leading: const Icon(Icons.admin_panel_settings_outlined, size: 26),
               title: const Text(
-                'SuperAdmin: церкви',
+                'SuperAdmin/Developer: церкви',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               trailing: const Icon(Icons.chevron_right, size: 26),
@@ -170,7 +170,7 @@ class AdminPanelScreen extends ConsumerWidget {
                 ],
               ),
               title: const Text(
-                'SuperAdmin: пользователи',
+                'SuperAdmin/Developer: пользователи',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               trailing: const Icon(Icons.chevron_right, size: 26),
@@ -180,6 +180,20 @@ class AdminPanelScreen extends ConsumerWidget {
                 context.go('${AppRoutes.admin}/superadmin-users');
               },
             ),
+            if (role == 'DEVELOPER') ...[
+              const Divider(height: 1),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                minVerticalPadding: 18,
+                leading: const Icon(Icons.bug_report_outlined, size: 26),
+                title: const Text(
+                  'Репорты',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 26),
+                onTap: () => context.go(AppRoutes.developerReports),
+              ),
+            ],
           ],
         ],
       ),

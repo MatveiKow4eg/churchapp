@@ -5,6 +5,8 @@ import '../features/admin/presentation/admin_panel_screen.dart';
 import '../features/superadmin/presentation/superadmin_panel_screen.dart';
 import '../features/superadmin/users/superadmin_users_screen.dart';
 import '../features/admin/presentation/no_access_screen.dart';
+import '../features/reports/presentation/developer_reports_screen.dart';
+import '../features/reports/presentation/report_create_sheet.dart';
 import '../features/admin/presentation/pending_submissions_screen.dart';
 import '../features/admin/tasks/admin_tasks_screen.dart';
 import '../features/admin/tasks/create_task_screen.dart';
@@ -272,6 +274,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: 'superadmin-users',
                 builder: (context, state) => const SuperAdminUsersScreen(),
               ),
+              GoRoute(
+                path: 'reports',
+                builder: (context, state) => const DeveloperReportsScreen(),
+              ),
             ],
           ),
         ],
@@ -313,10 +319,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 4) User is present: route by church flow
       // Make routing decision based on role FIRST.
 
-      // SUPERADMIN: keep them in the shell and allow admin routes.
+      // SUPERADMIN/DEVELOPER: keep them in the shell and allow admin routes.
       // NOTE: superadmin panel is mounted under /admin/superadmin.
       final role = user.role.trim().toUpperCase();
-      if (role == 'SUPERADMIN') {
+      if (role == 'SUPERADMIN' || role == 'DEVELOPER') {
         final isInShell = loc.startsWith(AppRoutes.tasks) ||
             loc.startsWith(AppRoutes.bible) ||
             loc.startsWith(AppRoutes.shop) ||
@@ -430,6 +436,9 @@ abstract final class AppRoutes {
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
   static const adminChurchStats = '/admin/church-stats';
+
+  // Reports
+  static const developerReports = '/admin/reports';
 }
 
 class _ProfileScreenPlaceholder extends ConsumerWidget {
@@ -550,6 +559,22 @@ class _ProfileScreenPlaceholder extends ConsumerWidget {
                 title: const Text('Админ-панель'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.go(AppRoutes.admin),
+              );
+            },
+          ),
+          const Divider(height: 24),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Сообщить об ошибке'),
+            subtitle: const Text('Это увидит только DEVELOPER'),
+            onTap: () async {
+              await showModalBottomSheet<bool>(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (_) {
+                  return const ReportCreateSheet();
+                },
               );
             },
           ),

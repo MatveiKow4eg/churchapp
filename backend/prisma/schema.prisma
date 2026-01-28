@@ -11,6 +11,7 @@ enum UserRole {
   USER
   ADMIN
   SUPERADMIN
+  DEVELOPER
 }
 
 enum UserStatus {
@@ -153,6 +154,8 @@ model User {
 
   xpLedger XpLedger[]
   bibleVerseAnnotations BibleVerseAnnotation[]
+
+  reports Report[]
 }
 
 model Task {
@@ -320,6 +323,20 @@ model ChurchMember {
   @@unique([userId, churchId])
   @@index([churchId])
   @@index([userId])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  text      String
+  meta      Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model BibleVerseAnnotation {

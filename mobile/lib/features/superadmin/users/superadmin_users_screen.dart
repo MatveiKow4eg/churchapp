@@ -26,9 +26,9 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
   @override
   Widget build(BuildContext context) {
     final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
-    if (role != 'SUPERADMIN') {
+    if (role != 'SUPERADMIN' && role != 'DEVELOPER') {
       return const Scaffold(
-        body: Center(child: Text('Forbidden: SUPERADMIN only')),
+        body: Center(child: Text('Forbidden: SUPERADMIN/DEVELOPER only')),
       );
     }
 
@@ -38,7 +38,7 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SuperAdmin: пользователи'),
+        title: const Text('SuperAdmin/Developer: пользователи'),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -77,7 +77,7 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
               // If we have no current church (unlikely for superadmin), default to ALL.
               final selectedChurchId = initialSelected;
 
-              final roleOptions = const <String>['__ALL__', 'USER', 'ADMIN', 'SUPERADMIN'];
+              final roleOptions = const <String>['__ALL__', 'USER', 'ADMIN', 'SUPERADMIN', 'DEVELOPER'];
               final selectedRoleState = ref.watch(_selectedRoleProvider);
               final selectedRole = selectedRoleState ?? '__ALL__';
 
@@ -88,9 +88,10 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
 
               // Sort by role priority, then by lastName/firstName for stable grouping.
               final rolePriority = <String, int>{
-                'SUPERADMIN': 0,
-                'ADMIN': 1,
-                'USER': 2,
+                'DEVELOPER': 0,
+                'SUPERADMIN': 1,
+                'ADMIN': 2,
+                'USER': 3,
               };
               filtered.sort((a, b) {
                 final pa = rolePriority[a.role.trim().toUpperCase()] ?? 99;
@@ -363,6 +364,7 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                   DropdownMenuItem(value: 'USER', child: Text('USER')),
                   DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
                   DropdownMenuItem(value: 'SUPERADMIN', child: Text('SUPERADMIN')),
+                  DropdownMenuItem(value: 'DEVELOPER', child: Text('DEVELOPER')),
                 ],
                 onChanged: (v) => setState(() => _role = v ?? _role),
               ),

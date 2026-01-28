@@ -24,8 +24,8 @@ async function deactivateTask(req, res, next) {
       throw new HttpError(404, 'NOT_FOUND', 'Task not found');
     }
 
-    // SUPERADMIN can deactivate any task. ADMIN is church-scoped.
-    if (req.user?.role !== 'SUPERADMIN' && task.churchId !== churchId) {
+    // SUPERADMIN/DEVELOPER can deactivate any task. ADMIN is church-scoped.
+    if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'DEVELOPER' && task.churchId !== churchId) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
@@ -151,8 +151,8 @@ async function getTaskById(req, res, next) {
       throw new HttpError(404, 'NOT_FOUND', 'Task not found');
     }
 
-    // SUPERADMIN can access any task. Others are church-scoped.
-    if (req.user?.role !== 'SUPERADMIN' && task.churchId !== churchId) {
+    // SUPERADMIN/DEVELOPER can access any task. Others are church-scoped.
+    if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'DEVELOPER' && task.churchId !== churchId) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
@@ -196,8 +196,8 @@ async function updateTask(req, res, next) {
       throw new HttpError(404, 'NOT_FOUND', 'Task not found');
     }
 
-    // SUPERADMIN can edit any task. ADMIN is church-scoped.
-    if (req.user?.role !== 'SUPERADMIN' && task.churchId !== churchId) {
+    // SUPERADMIN/DEVELOPER can edit any task. ADMIN is church-scoped.
+    if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'DEVELOPER' && task.churchId !== churchId) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
@@ -233,8 +233,8 @@ async function deleteTask(req, res, next) {
       throw new HttpError(404, 'NOT_FOUND', 'Task not found');
     }
 
-    // SUPERADMIN can delete any task. ADMIN is church-scoped.
-    if (req.user?.role !== 'SUPERADMIN' && task.churchId !== churchId) {
+    // SUPERADMIN/DEVELOPER can delete any task. ADMIN is church-scoped.
+    if (req.user?.role !== 'SUPERADMIN' && req.user?.role !== 'DEVELOPER' && task.churchId !== churchId) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 

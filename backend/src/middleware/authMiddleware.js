@@ -83,11 +83,12 @@ async function requireAuth(req, res, next) {
     }
 
     // IMPORTANT:
-    // For SUPERADMIN "impersonation" we issue a token with a chosen churchId,
+    // For SUPERADMIN/DEVELOPER "impersonation" we issue a token with a chosen churchId,
     // but we do NOT change dbUser.churchId. Most endpoints use req.user.churchId
-    // for scoping, so for SUPERADMIN we must prefer the token churchId when present.
+    // for scoping, so for SUPERADMIN/DEVELOPER we must prefer the token churchId when present.
     const effectiveChurchId =
-      (dbUser.role === 'SUPERADMIN' && payload.churchId != null
+      ((dbUser.role === 'SUPERADMIN' || dbUser.role === 'DEVELOPER') &&
+              payload.churchId != null
         ? payload.churchId
         : dbUser.churchId) ?? null;
 

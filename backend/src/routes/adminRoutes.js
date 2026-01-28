@@ -65,12 +65,12 @@ function logAiRequest({ req, status, latencyMs, meta }) {
   );
 }
 
-// All /admin endpoints require ADMIN/SUPERADMIN
+// All /admin endpoints require ADMIN/SUPERADMIN/DEVELOPER
 router.use(requireAuth);
 router.use(requireAdmin);
 
 // POST /admin/churches
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.post('/churches', validate({ body: createChurchSchema }), async (req, res, next) => {
   try {
     const church = await createChurch(req.body);
@@ -89,7 +89,7 @@ router.post('/churches', validate({ body: createChurchSchema }), async (req, res
 });
 
 // GET /admin/churches
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.get('/churches', async (req, res, next) => {
   try {
     const items = await prisma.church.findMany({
@@ -105,7 +105,7 @@ router.get('/churches', async (req, res, next) => {
 });
 
 // GET /admin/churches/deleted
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.get('/churches/deleted', async (req, res, next) => {
   try {
     const items = await prisma.church.findMany({
@@ -122,7 +122,7 @@ router.get('/churches/deleted', async (req, res, next) => {
 });
 
 // POST /admin/churches/:id/restore
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.post('/churches/:id/restore', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -151,7 +151,7 @@ router.post('/churches/:id/restore', async (req, res, next) => {
 });
 
 // DELETE /admin/churches/:id
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 // DANGER: deletes church and all related data (tasks, submissions, ledger, etc.)
 router.delete('/churches/:id', async (req, res, next) => {
   try {
@@ -194,7 +194,7 @@ router.delete('/churches/:id', async (req, res, next) => {
 });
 
 // GET /admin/users
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.get('/users', async (req, res, next) => {
   try {
     const items = await prisma.user.findMany({
@@ -221,7 +221,7 @@ router.get('/users', async (req, res, next) => {
 });
 
 // PATCH /admin/users/:id
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.patch('/users/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -263,7 +263,7 @@ router.patch('/users/:id', async (req, res, next) => {
 });
 
 // DELETE /admin/users/:id
-// Access: SUPERADMIN
+// Access: SUPERADMIN/DEVELOPER
 router.delete('/users/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -293,8 +293,8 @@ router.delete('/users/:id', async (req, res, next) => {
 });
 
 // POST /admin/impersonate
-// Access: SUPERADMIN
-// Switches SUPERADMIN context to a selected church.
+// Access: SUPERADMIN/DEVELOPER
+// Switches SUPERADMIN/DEVELOPER context to a selected church.
 // Also ensures the user is a "member" of that church by setting user.churchId
 // (legacy single-church model).
 // NOTE: once multi-church membership is introduced, this should write to ChurchMember

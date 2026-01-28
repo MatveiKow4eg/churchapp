@@ -233,12 +233,12 @@ class _SuperAdminPanelScreenState extends ConsumerState<SuperAdminPanelScreen> {
   @override
   Widget build(BuildContext context) {
     final role = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
-    if (role != 'SUPERADMIN' && role != 'SUPERADMIN') {
+    if (role != 'SUPERADMIN' && role != 'DEVELOPER') {
       // Hard guard: do not render this screen for non-superadmin.
       return Scaffold(
         appBar: AppBar(title: const Text('No access')),
         body: const Center(
-          child: Text('Forbidden: SUPERADMIN only'),
+          child: Text('Forbidden: SUPERADMIN/DEVELOPER only'),
         ),
       );
     }

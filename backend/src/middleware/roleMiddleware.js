@@ -38,7 +38,7 @@ function requireRole(...roles) {
  * requireAdmin
  * Alias for requireRole('ADMIN', 'SUPERADMIN')
  */
-const requireAdmin = requireRole('ADMIN', 'SUPERADMIN');
+const requireAdmin = requireRole('ADMIN', 'SUPERADMIN', 'DEVELOPER');
 
 /**
  * requireSameChurch
@@ -54,7 +54,7 @@ function requireSameChurch(req, res, next) {
       throw new HttpError(401, 'UNAUTHORIZED', 'Unauthorized');
     }
 
-    if (req.user.role === 'SUPERADMIN') {
+    if (req.user.role === 'SUPERADMIN' || req.user.role === 'DEVELOPER') {
       return next();
     }
 
@@ -75,8 +75,11 @@ function requireSameChurch(req, res, next) {
   }
 }
 
+const requireDeveloper = requireRole('DEVELOPER');
+
 module.exports = {
   requireRole,
   requireAdmin,
+  requireDeveloper,
   requireSameChurch
 };

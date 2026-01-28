@@ -19,7 +19,11 @@ async function create(req, res, next) {
 
     // This controller is used by both /churches (admin-protected) and /admin/churches.
     // Return joinCode ONLY for admins.
-    const isAdmin = req.user && (req.user.role === 'ADMIN' || req.user.role === 'SUPERADMIN');
+    const isAdmin =
+      req.user &&
+      (req.user.role === 'ADMIN' ||
+        req.user.role === 'SUPERADMIN' ||
+        req.user.role === 'DEVELOPER');
 
     return res.status(201).json({
       church: {

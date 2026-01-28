@@ -14,6 +14,7 @@ const { meRouter } = require('./routes/meRoutes');
 const { statsRouter } = require('./routes/statsRoutes');
 const { leaderboardRouter } = require('./routes/leaderboardRoutes');
 const { adminRouter } = require('./routes/adminRoutes');
+const { reportRouter } = require('./routes/reportRoutes');
 const avatarRoutes = require('./routes/avatarRoutes');
 
 // bible router (public)
@@ -102,6 +103,9 @@ app.use('/leaderboard', leaderboardRouter);
 
 // Mount admin routes
 app.use('/admin', adminRouter);
+
+// Mount reports routes
+app.use('/reports', reportRouter);
 
 // Mount avatar proxy routes
 app.use(avatarRoutes);

@@ -189,7 +189,7 @@ async function rejectSubmission({
       throw new HttpError(409, 'CONFLICT', 'Already decided');
     }
 
-    if (adminRole !== 'SUPERADMIN') {
+    if (adminRole !== 'SUPERADMIN' && adminRole !== 'DEVELOPER') {
       if (!adminChurchId) {
         throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
       }
@@ -261,8 +261,8 @@ async function approveSubmission({
       throw new HttpError(409, 'CONFLICT', 'Already decided');
     }
 
-    // Church restriction for ADMIN; SUPERADMIN can approve across churches
-    if (adminRole !== 'SUPERADMIN') {
+    // Church restriction for ADMIN; SUPERADMIN/DEVELOPER can approve across churches
+    if (adminRole !== 'SUPERADMIN' && adminRole !== 'DEVELOPER') {
       if (!adminChurchId) {
         throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
       }

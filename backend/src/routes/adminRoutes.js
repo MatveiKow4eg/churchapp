@@ -228,7 +228,42 @@ router.patch('/users/:id', async (req, res, next) => {
     const { role, status, churchId, firstName, lastName } = req.body ?? {};
 
     const data = {};
-    if (role !== undefined) data.role = role;
+
+    // SECURITY POLICY:
+    // - DEVELOPER is the highest role.
+    // - Only an existing DEVELOPER can grant/revoke the DEVELOPER role.
+    // - SUPERADMIN can manage other roles, but cannot assign DEVELOPER.
+    if (role !== undefined) {
+      const requestedRole = (role ?? '').toString().trim().toUpperCase();
+      const actorRole = (req.user?.role ?? '').toString().trim().toUpperCase();
+
+      if (requestedRole === 'DEVELOPER' && actorRole !== 'DEVELOPER') {
+        return res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Only DEVELOPER can assign DEVELOPER role'
+          }
+        });
+      }
+
+      // Prevent non-developers from demoting developers
+      const target = await prisma.user.findUnique({ where: { id }, select: { role: true } });
+      if (!target) {
+        return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+      }
+      const targetRole = (target.role ?? '').toString().trim().toUpperCase();
+      if (targetRole === 'DEVELOPER' && actorRole !== 'DEVELOPER') {
+        return res.status(403).json({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Only DEVELOPER can change DEVELOPER role'
+          }
+        });
+      }
+
+      data.role = requestedRole;
+    }
+
     if (status !== undefined) data.status = status;
     if (churchId !== undefined) data.churchId = churchId;
     if (firstName !== undefined) data.firstName = firstName;

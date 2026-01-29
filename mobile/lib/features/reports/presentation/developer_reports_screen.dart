@@ -4,9 +4,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/user_session_provider.dart';
 import '../reports_api.dart';
 
-final developerReportsProvider = FutureProvider<List<ReportItem>>((ref) async {
-  return ref.read(reportsApiProvider).listReports();
-});
+final developerReportsControllerProvider =
+    NotifierProvider<DeveloperReportsController, AsyncValue<List<ReportItem>>>(
+  DeveloperReportsController.new,
+);
+
+class DeveloperReportsController extends Notifier<AsyncValue<List<ReportItem>>> {
+  @override
+  AsyncValue<List<ReportItem>> build() {
+    _load();
+    return const AsyncLoading();
+  }
+
+  Future<void> _load() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      final items = await ref.read(reportsApiProvider).listReports();
+      // Сортировка по дате: новые сверху
+      final sorted = [...items]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return sorted;
+    });
+  }
+
+  Future<void> refresh() => _load();
+
+  Future<void> deleteById(String id) async {
+    final previous = state;
+
+    // ВАЖНО: Dismissible требует убрать элеме��т из дерева сразу после dismiss.
+    state = state.whenData((items) => items.where((r) => r.id != id).toList());
+
+    try {
+      await ref.read(reportsApiProvider).deleteReport(id: id);
+    } catch (e, st) {
+      // Откатываем UI, если серверное удаление не прошло
+      state = previous;
+      Error.throwWithStackTrace(e, st);
+    }
+  }
+}
 
 class DeveloperReportsScreen extends ConsumerWidget {
   const DeveloperReportsScreen({super.key});
@@ -20,7 +56,7 @@ class DeveloperReportsScreen extends ConsumerWidget {
       );
     }
 
-    final async = ref.watch(developerReportsProvider);
+    final async = ref.watch(developerReportsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,7 +64,8 @@ class DeveloperReportsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Обновить',
-            onPressed: () => ref.invalidate(developerReportsProvider),
+            onPressed: () =>
+                ref.read(developerReportsControllerProvider.notifier).refresh(),
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -39,16 +76,12 @@ class DeveloperReportsScreen extends ConsumerWidget {
             return const Center(child: Text('Нет репортов'));
           }
 
-          // Сортировка по дате: новые сверху
-          final sorted = [...items]
-            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: sorted.length,
+            itemCount: items.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, i) {
-              final r = sorted[i];
+              final r = items[i];
               final dt = r.createdAt.toLocal();
               final email = r.userEmail.trim();
               final text = r.text.trim();
@@ -88,8 +121,9 @@ class DeveloperReportsScreen extends ConsumerWidget {
                 },
                 onDismissed: (_) async {
                   try {
-                    await ref.read(reportsApiProvider).deleteReport(id: r.id);
-                    ref.invalidate(developerReportsProvider);
+                    await ref
+                        .read(developerReportsControllerProvider.notifier)
+                        .deleteById(r.id);
 
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,8 +131,6 @@ class DeveloperReportsScreen extends ConsumerWidget {
                       );
                     }
                   } catch (e) {
-                    // restore by reloading
-                    ref.invalidate(developerReportsProvider);
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Не удалось удалить: $e')),

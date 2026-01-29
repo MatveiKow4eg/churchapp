@@ -124,7 +124,7 @@ class AdminPanelScreen extends ConsumerWidget {
               minVerticalPadding: 18,
               leading: const Icon(Icons.admin_panel_settings_outlined, size: 26),
               title: const Text(
-                'SuperAdmin/Developer: церкви',
+                'Церкви',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               trailing: const Icon(Icons.chevron_right, size: 26),
@@ -171,7 +171,7 @@ class AdminPanelScreen extends ConsumerWidget {
                 ],
               ),
               title: const Text(
-                'SuperAdmin/Developer: пользователи',
+                'Пользователи',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               trailing: const Icon(Icons.chevron_right, size: 26),
@@ -195,11 +195,10 @@ class AdminPanelScreen extends ConsumerWidget {
                       top: -2,
                       child: Consumer(
                         builder: (context, ref, _) {
-                          final async = ref.watch(developerReportsProvider);
+                          final async = ref.watch(developerReportsControllerProvider);
                           final hasNew = async.maybeWhen(
                             data: (items) {
-                              // Простейшая эвристика "новые репорты": созданные за последние 24 часа.
-                              // (Без серверного флага isRead и без локального хранения lastSeen)
+                              // Эвристика "новые репорты": созданные за последние 24 часа.
                               final cutoff =
                                   DateTime.now().subtract(const Duration(hours: 24));
                               return items.any((r) => r.createdAt.isAfter(cutoff));
@@ -228,8 +227,7 @@ class AdminPanelScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right, size: 26),
                 onTap: () {
-                  // Перед открытием обновим, чтобы индикатор был актуальным.
-                  ref.invalidate(developerReportsProvider);
+                  ref.read(developerReportsControllerProvider.notifier).refresh();
                   context.go(AppRoutes.developerReports);
                 },
               ),

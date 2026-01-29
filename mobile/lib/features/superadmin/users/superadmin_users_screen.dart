@@ -38,7 +38,7 @@ class _SuperAdminUsersScreenState extends ConsumerState<SuperAdminUsersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('SuperAdmin/Developer: пользователи'),
+        title: const Text('Пользователи'),
         actions: [
           IconButton(
             tooltip: 'Refresh',

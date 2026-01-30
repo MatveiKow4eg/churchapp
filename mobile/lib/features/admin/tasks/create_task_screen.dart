@@ -78,8 +78,9 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
 
   String? _validateDesc(String? v) {
     final s = (v ?? '').trim();
-    if (s.isEmpty) return 'Введите описание';
-    if (s.length < 10) return 'Минимум 10 символов';
+    // В окне создания описание не обязательно. Разрешаем пустое значение.
+    if (s.isEmpty) return null;
+    if (s.length < 10) return 'Минимум 10 символов или оставь пустым';
     if (s.length > 2000) return 'Максимум 2000 символов';
     return null;
   }
@@ -271,8 +272,73 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
     }
   }
 
+  bool _validateAndShowQuizError() {
+    // Validate QUIZ editor draft and show a clear error message.
+    final messenger = ScaffoldMessenger.of(context);
+
+    // passScore 0..100
+    final ps = int.tryParse(_quizPassScoreCtrl.text.trim() == '' ? '70' : _quizPassScoreCtrl.text.trim());
+    if (ps == null || ps < 0 || ps > 100) {
+      messenger.showSnackBar(const SnackBar(content: Text('Порог прохождения должен быть числом 0–100')));
+      return false;
+    }
+
+    // maxAttempts >=1 or empty
+    final maStr = _quizMaxAttemptsCtrl.text.trim();
+    if (maStr.isNotEmpty) {
+      final ma = int.tryParse(maStr);
+      if (ma == null || ma < 1) {
+        messenger.showSnackBar(const SnackBar(content: Text('Макс. попыток: оставь пустым или введи целое число от 1')));
+        return false;
+      }
+    }
+
+    if (_quizQuestions.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Добавь минимум один вопрос для викторины')));
+      return false;
+    }
+
+    for (int i = 0; i < _quizQuestions.length; i++) {
+      final q = _quizQuestions[i];
+      final text = q.textCtrl.text.trim();
+      if (text.isEmpty) {
+        messenger.showSnackBar(SnackBar(content: Text('Вопрос ${i + 1}: укажи текст вопроса')));
+        return false;
+      }
+
+      final opts = q.options
+          .map((o) => o.toJson())
+          .where((o) => o != null)
+          .map((o) => o!)
+          .toList(growable: false);
+
+      if (opts.length < 2) {
+        messenger.showSnackBar(SnackBar(content: Text('Вопрос ${i + 1}: добавь минимум два варианта ответа')));
+        return false;
+      }
+
+      final correctCount = opts.where((o) => o['isCorrect'] == true).length;
+      if (correctCount == 0) {
+        messenger.showSnackBar(SnackBar(content: Text('Вопрос ${i + 1}: отметь хотя бы один правильный вариант')));
+        return false;
+      }
+      if (!q.multiSelect && correctCount != 1) {
+        messenger.showSnackBar(SnackBar(content: Text('Вопрос ${i + 1}: для одиночного выбора должен быть ровно один правильный вариант')));
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    // Extra: validate quiz draft before network call
+    if (_category.trim().toUpperCase() == 'QUIZ') {
+      final ok = _validateAndShowQuizError();
+      if (!ok) return;
+    }
 
     setState(() => _saving = true);
 
@@ -939,6 +1005,7 @@ class _QuizEditor extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Порог прохождения, %',
+                  helperText: 'Диапазон 0–100',
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => onChanged(),
@@ -951,6 +1018,7 @@ class _QuizEditor extends StatelessWidget {
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Макс. попыток (пусто = без лимита)',
+                  helperText: 'Если задано — целое число от 1',
                   border: OutlineInputBorder(),
                 ),
                 onChanged: (_) => onChanged(),
@@ -984,6 +1052,13 @@ class _QuizEditor extends StatelessWidget {
           onPressed: onAddQuestion,
           icon: const Icon(Icons.add),
           label: const Text('Добавить вопрос'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Требования к вопросам:\n• Минимум 2 варианта ответа с текс��ом\n• Минимум 1 правильный вариант\n• Если выключен переключатель, ровно 1 правильный',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
       ],
     );

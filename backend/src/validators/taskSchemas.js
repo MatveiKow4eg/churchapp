@@ -22,6 +22,14 @@ const descriptionSchema = z
   .min(10, 'Description must be at least 10 characters')
   .max(2000, 'Description must be at most 2000 characters');
 
+// Optional description for create/update: allow empty string with max length
+const descriptionOptionalSchema = z
+  .string()
+  .trim()
+  .max(2000, 'Description must be at most 2000 characters')
+  .optional()
+  .default('');
+
 const pointsRewardSchema = z
   .number()
   .int('pointsReward must be an integer')
@@ -59,7 +67,7 @@ const quizSchema = z.object({
 
 const createTaskBodySchema = z.object({
   title: titleSchema,
-  description: descriptionSchema,
+  description: descriptionOptionalSchema,
   category: taskCategorySchema,
   pointsReward: pointsRewardSchema,
   quiz: z.union([quizSchema, z.undefined()]).optional()
@@ -69,7 +77,7 @@ const updateTaskSchema = z
   .object({
     churchId: z.string().cuid('Invalid churchId (expected cuid)').optional(),
     title: titleSchema.optional(),
-    description: descriptionSchema.optional(),
+    description: z.string().trim().max(2000, 'Description must be at most 2000 characters').optional(),
     category: taskCategorySchema.optional(),
     pointsReward: pointsRewardSchema.optional(),
     createdById: z.string().cuid('Invalid createdById (expected cuid)').optional(),

@@ -18,7 +18,9 @@ const {
   updateTask,
   deactivateTask,
   deleteTask,
-  improveTaskTextController
+  improveTaskTextController,
+  startQuizAttemptController,
+  submitQuizAttemptController
 } = require('../controllers/taskController');
 
 const taskRouter = express.Router();
@@ -45,6 +47,22 @@ taskRouter.get(
   requireAuth,
   validate({ params: z.object({ id: cuidSchema }) }),
   getTaskById
+);
+
+// POST /tasks/:id/quiz/attempts (user)
+taskRouter.post(
+  '/:id/quiz/attempts',
+  requireAuth,
+  validate({ params: z.object({ id: cuidSchema }) }),
+  startQuizAttemptController
+);
+
+// POST /tasks/:id/quiz/attempts/:attemptId/submit (user)
+taskRouter.post(
+  '/:id/quiz/attempts/:attemptId/submit',
+  requireAuth,
+  validate({ params: z.object({ id: cuidSchema, attemptId: cuidSchema }), body: z.object({ answers: z.array(z.object({ questionId: cuidSchema, selectedOptionIds: z.array(z.string()) })).optional() }) }),
+  submitQuizAttemptController
 );
 
 // PATCH /tasks/:id/deactivate (admin only)

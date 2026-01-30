@@ -6,6 +6,7 @@ const taskCategorySchema = z.enum([
   'COMMUNITY',
   'CREATIVITY',
   'REFLECTION',
+  'QUIZ',
   'OTHER'
 ]);
 
@@ -37,11 +38,31 @@ const createTaskSchema = z.object({
 });
 
 // Body schema for admin create task endpoint: churchId comes from req.user, not from client
+// Quiz payload schemas
+const quizOptionSchema = z.object({
+  text: z.string().trim().min(1).max(500),
+  isCorrect: z.boolean()
+});
+
+const quizQuestionSchema = z.object({
+  text: z.string().trim().min(1).max(1000),
+  multiSelect: z.boolean().optional().default(false),
+  options: z.array(quizOptionSchema).min(2, 'Each question must have at least 2 options')
+});
+
+const quizSchema = z.object({
+  shuffleQuestions: z.boolean().optional().default(false),
+  maxAttempts: z.number().int().min(1).nullable().optional(),
+  passScore: z.number().int().min(0).max(100).optional().default(70),
+  questions: z.array(quizQuestionSchema).min(1, 'Quiz must contain at least 1 question')
+});
+
 const createTaskBodySchema = z.object({
   title: titleSchema,
   description: descriptionSchema,
   category: taskCategorySchema,
-  pointsReward: pointsRewardSchema
+  pointsReward: pointsRewardSchema,
+  quiz: z.union([quizSchema, z.undefined()]).optional()
 });
 
 const updateTaskSchema = z
@@ -52,7 +73,27 @@ const updateTaskSchema = z
     category: taskCategorySchema.optional(),
     pointsReward: pointsRewardSchema.optional(),
     createdById: z.string().cuid('Invalid createdById (expected cuid)').optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    quiz: z
+      .object({
+        // For update, accept full snapshot to replace (server decides what is allowed)
+        shuffleQuestions: z.boolean().optional(),
+        maxAttempts: z.number().int().min(1).nullable().optional(),
+        passScore: z.number().int().min(0).max(100).optional(),
+        questions: z
+          .array(
+            z.object({
+              text: z.string().trim().min(1).max(1000),
+              multiSelect: z.boolean().optional(),
+              options: z.array(
+                z.object({ text: z.string().trim().min(1).max(500), isCorrect: z.boolean() })
+              ).min(2)
+            })
+          )
+          .min(1)
+          .optional()
+      })
+      .optional()
   })
   .partial();
 

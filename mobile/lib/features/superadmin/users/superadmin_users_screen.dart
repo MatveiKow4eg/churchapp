@@ -302,6 +302,9 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final actorRole = (ref.watch(userRoleProvider) ?? '').trim().toUpperCase();
+    final actorIsDeveloper = actorRole == 'DEVELOPER';
+
     final churchItems = <DropdownMenuItem<String?>>[
       const DropdownMenuItem(value: null, child: Text('— (без церкви)')),
       ...widget.churches.map(
@@ -311,6 +314,18 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
         ),
       ),
     ];
+
+    // DEVELOPER — высшая роль. Суперадмин не должен иметь возможности назначать/снимать её.
+    final roleItems = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(value: 'USER', child: Text('USER')),
+      const DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
+      const DropdownMenuItem(value: 'SUPERADMIN', child: Text('SUPERADMIN')),
+      if (actorIsDeveloper)
+        const DropdownMenuItem(value: 'DEVELOPER', child: Text('DEVELOPER')),
+    ];
+
+    // Если суперадмин открыл пользователя с ролью DEVELOPER, не даём менять роль вообще.
+    final targetIsDeveloper = widget.user.role.trim().toUpperCase() == 'DEVELOPER';
 
     return AlertDialog(
       title: const Text('Редактировать пользователя'),
@@ -360,13 +375,24 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
                   labelText: 'Role',
                   border: OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'USER', child: Text('USER')),
-                  DropdownMenuItem(value: 'ADMIN', child: Text('ADMIN')),
-                  DropdownMenuItem(value: 'SUPERADMIN', child: Text('SUPERADMIN')),
-                  DropdownMenuItem(value: 'DEVELOPER', child: Text('DEVELOPER')),
-                ],
-                onChanged: (v) => setState(() => _role = v ?? _role),
+                items: roleItems,
+                onChanged: (!actorIsDeveloper && targetIsDeveloper)
+                    ? null
+                    : (v) {
+                        if (v == null) return;
+
+                        // UI-guard: SUPERADMIN не может выставить DEVELOPER.
+                        if (!actorIsDeveloper && v.trim().toUpperCase() == 'DEVELOPER') {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Только DEVELOPER может назначать роль DEVELOPER'),
+                            ),
+                          );
+                          return;
+                        }
+
+                        setState(() => _role = v);
+                      },
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -454,6 +480,26 @@ class _EditUserDialogState extends ConsumerState<_EditUserDialog> {
           onPressed: _saving
               ? null
               : () async {
+                  // Final client-side guard (server also enforces this).
+                  if (!actorIsDeveloper && _role.trim().toUpperCase() == 'DEVELOPER') {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Только DEVELOPER может назначать роль DEVELOPER'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Also disallow changing an existing DEVELOPER by non-developer.
+                  if (!actorIsDeveloper && targetIsDeveloper) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Только DEVELOPER может менять роль DEVELOPER'),
+                      ),
+                    );
+                    return;
+                  }
+
                   setState(() => _saving = true);
                   try {
                     await ref.read(superadminApiProvider).updateUser(

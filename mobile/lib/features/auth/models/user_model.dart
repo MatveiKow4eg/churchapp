@@ -43,29 +43,29 @@ class UserModel {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    final ageValue = json['age'];
-    final age = switch (ageValue) {
-      final num n => n.toInt(),
-      final String s => int.tryParse(s) ?? 0,
-      _ => 0,
-    };
-
-    final avatarConfigRaw = json['avatarConfig'];
-    final avatarConfig = (avatarConfigRaw is Map)
-        ? avatarConfigRaw.cast<String, dynamic>()
-        : null;
-
-    final avatarUpdatedAtRaw = json['avatarUpdatedAt'];
-    final avatarUpdatedAt = avatarUpdatedAtRaw != null
-        ? DateTime.tryParse(avatarUpdatedAtRaw.toString())
-        : null;
-
     // /auth/me returns `{ user, church, balance }`. Some callers might pass
     // either the whole envelope or just `user`.
     final envelopeUser = json['user'];
     final Map<String, dynamic> userJson = envelopeUser is Map
         ? Map<String, dynamic>.from(envelopeUser)
         : json;
+
+    final ageValue = userJson['age'];
+    final age = switch (ageValue) {
+      final num n => n.toInt(),
+      final String s => int.tryParse(s) ?? 0,
+      _ => 0,
+    };
+
+    final avatarConfigRaw = userJson['avatarConfig'];
+    final avatarConfig = (avatarConfigRaw is Map)
+        ? avatarConfigRaw.cast<String, dynamic>()
+        : null;
+
+    final avatarUpdatedAtRaw = userJson['avatarUpdatedAt'];
+    final avatarUpdatedAt = avatarUpdatedAtRaw != null
+        ? DateTime.tryParse(avatarUpdatedAtRaw.toString())
+        : null;
 
     final rawChurch = json['church'];
     final Map<String, dynamic>? churchJson = rawChurch is Map

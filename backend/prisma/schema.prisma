@@ -25,6 +25,7 @@ enum TaskCategory {
   COMMUNITY
   CREATIVITY
   REFLECTION
+  QUIZ
   OTHER
 }
 
@@ -184,6 +185,8 @@ model Task {
   @@index([category])
 
   xpLedger XpLedger[]
+
+  quiz     Quiz?
 }
 
 model Submission {
@@ -361,4 +364,74 @@ model BibleVerseAnnotation {
   @@unique([userId, translationId, bookId, chapter, verse], name: "userId_translationId_bookId_chapter_verse")
   @@index([userId, updatedAt])
   @@index([userId, translationId, bookId, chapter])
+}
+
+model Quiz {
+  id String @id
+  task Task @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  shuffleQuestions Boolean @default(false)
+  maxAttempts      Int?
+  passScore        Int @default(70)
+
+  questions QuizQuestion[]
+}
+
+model QuizQuestion {
+  id         String @id @default(cuid())
+  quizId     String
+  quiz       Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  order       Int
+  text        String
+  multiSelect Boolean @default(false)
+
+  options QuizOption[]
+
+  @@index([quizId, order])
+}
+
+model QuizOption {
+  id          String       @id @default(cuid())
+  questionId  String
+  question    QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  order     Int
+  text      String
+  isCorrect Boolean
+
+  @@index([questionId, order])
+}
+
+model QuizAttempt {
+  id String @id @default(cuid())
+
+  taskId String
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  scorePercent Int
+  isPassed     Boolean
+
+  answers QuizAnswer[]
+
+  @@index([taskId, userId, createdAt])
+}
+
+model QuizAnswer {
+  id String @id @default(cuid())
+
+  attemptId String
+  attempt   QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  selectedOptionIds Json
+
+  @@index([attemptId])
+  @@index([questionId])
 }

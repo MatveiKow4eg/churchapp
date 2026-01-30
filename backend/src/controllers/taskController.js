@@ -69,7 +69,7 @@ async function createTask(req, res, next) {
       throw new HttpError(409, 'NO_CHURCH', 'Admin has no church selected');
     }
 
-    const { title, description, category, pointsReward } = req.body;
+    const { title, description, category, pointsReward, quiz } = req.body;
 
     const task = await taskService.createTask({
       churchId,
@@ -77,7 +77,8 @@ async function createTask(req, res, next) {
       description,
       category,
       pointsReward,
-      createdById: req.user.id
+      createdById: req.user.id,
+      quiz
     });
 
     return res.status(201).json({
@@ -118,6 +119,7 @@ async function listTasks(req, res, next) {
       offset
     });
 
+    // Список оставляем без детальной структуры квиза (для экономии трафика/безопасности)
     return res.status(200).json({
       items: items.map((t) => ({
         id: t.id,
@@ -146,7 +148,7 @@ async function getTaskById(req, res, next) {
 
     const taskId = req.params.id;
 
-    const task = await taskService.getTaskById(taskId);
+    const task = await taskService.getTaskByIdFull(taskId);
     if (!task) {
       throw new HttpError(404, 'NOT_FOUND', 'Task not found');
     }
@@ -156,17 +158,33 @@ async function getTaskById(req, res, next) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
-    return res.status(200).json({
-      task: {
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        category: task.category,
-        pointsReward: task.pointsReward,
-        isActive: task.isActive,
-        createdAt: task.createdAt
-      }
-    });
+    const base = {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      category: task.category,
+      pointsReward: task.pointsReward,
+      isActive: task.isActive,
+      createdAt: task.createdAt
+    };
+
+    if (task.category !== 'QUIZ' || !task.quiz) {
+      return res.status(200).json({ task: base });
+    }
+
+    const quiz = {
+      shuffleQuestions: task.quiz.shuffleQuestions,
+      maxAttempts: task.quiz.maxAttempts,
+      passScore: task.quiz.passScore,
+      questions: task.quiz.questions.map((q) => ({
+        id: q.id,
+        text: q.text,
+        multiSelect: q.multiSelect,
+        options: q.options.map((o) => ({ id: o.id, text: o.text }))
+      }))
+    };
+
+    return res.status(200).json({ task: { ...base, quiz } });
   } catch (err) {
     return next(err);
   }
@@ -186,8 +204,9 @@ async function updateTask(req, res, next) {
     for (const key of ALLOWED_TASK_PATCH_FIELDS) {
       if (req.body[key] !== undefined) patch[key] = req.body[key];
     }
+    const quizPatch = req.body.quiz;
 
-    if (Object.keys(patch).length === 0) {
+    if (Object.keys(patch).length === 0 && quizPatch === undefined) {
       throw new HttpError(400, 'EMPTY_PATCH', 'Patch body is empty');
     }
 
@@ -201,7 +220,9 @@ async function updateTask(req, res, next) {
       throw new HttpError(403, 'FORBIDDEN', 'Forbidden');
     }
 
-    const updated = await taskService.updateTask(taskId, patch);
+    const updated = quizPatch !== undefined
+      ? await taskService.updateTaskWithQuiz(taskId, patch, quizPatch)
+      : await taskService.updateTask(taskId, patch);
 
     return res.status(200).json({
       task: {
@@ -266,6 +287,36 @@ async function improveTaskTextController(req, res, next) {
   }
 }
 
+async function startQuizAttemptController(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    const churchId = req.user?.churchId;
+    if (!churchId) throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
+    const taskId = req.params.id;
+
+    const attempt = await taskService.startQuizAttempt({ userId, taskId });
+    return res.status(201).json({ attemptId: attempt.id, createdAt: attempt.createdAt });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function submitQuizAttemptController(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    const churchId = req.user?.churchId;
+    if (!churchId) throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
+    const taskId = req.params.id;
+    const attemptId = req.params.attemptId;
+    const { answers } = req.body || {};
+
+    const result = await taskService.submitQuizAttempt({ userId, taskId, attemptId, answers });
+    return res.status(200).json(result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = {
   listTasks,
   getTaskById,
@@ -273,5 +324,7 @@ module.exports = {
   updateTask,
   deactivateTask,
   deleteTask,
-  improveTaskTextController
+  improveTaskTextController,
+  startQuizAttemptController,
+  submitQuizAttemptController
 };

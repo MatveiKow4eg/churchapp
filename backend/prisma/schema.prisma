@@ -157,6 +157,7 @@ model User {
   bibleVerseAnnotations BibleVerseAnnotation[]
 
   reports Report[]
+  quizAttempts QuizAttempt[]
 }
 
 model Task {
@@ -187,6 +188,7 @@ model Task {
   xpLedger XpLedger[]
 
   quiz     Quiz?
+  quizAttempts QuizAttempt[]
 }
 
 model Submission {
@@ -387,6 +389,7 @@ model QuizQuestion {
   multiSelect Boolean @default(false)
 
   options QuizOption[]
+  answers QuizAnswer[]
 
   @@index([quizId, order])
 }

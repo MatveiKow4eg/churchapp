@@ -37,6 +37,7 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
     'COMMUNITY',
     'CREATIVITY',
     'REFLECTION',
+    'QUIZ',
     'OTHER',
   ];
 
@@ -194,6 +195,7 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
                       DropdownMenuItem(value: 'COMMUNITY', child: Text('Сообщество / общение')),
                       DropdownMenuItem(value: 'CREATIVITY', child: Text('Творчество')),
                       DropdownMenuItem(value: 'REFLECTION', child: Text('Размышление / эссе')),
+                      DropdownMenuItem(value: 'QUIZ', child: Text('Викторина')),
                       DropdownMenuItem(value: 'OTHER', child: Text('Другое')),
                     ],
                     onChanged: _saving

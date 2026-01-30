@@ -17,6 +17,8 @@ String localizeTaskCategory(String raw) {
       return 'Творчество';
     case 'REFLECTION':
       return 'Рассуждение';
+    case 'QUIZ':
+      return 'Викторина';
     case 'OTHER':
       return 'Другое';
     default:

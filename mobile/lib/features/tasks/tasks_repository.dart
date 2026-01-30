@@ -70,6 +70,7 @@ class TasksRepository {
     required String description,
     required String category,
     required int pointsReward,
+    Map<String, dynamic>? quiz,
   }) async {
     try {
       final resp = await _apiClient.dio.post<Map<String, dynamic>>(
@@ -79,6 +80,7 @@ class TasksRepository {
           'description': description.trim(),
           'category': category.trim(),
           'pointsReward': pointsReward,
+          if (quiz != null) 'quiz': quiz,
         },
       );
 
@@ -122,11 +124,15 @@ class TasksRepository {
   Future<TaskModel> updateTask(
     String taskId, {
     required Map<String, dynamic> patch,
+    Map<String, dynamic>? quiz,
   }) async {
     try {
       final resp = await _apiClient.dio.patch<Map<String, dynamic>>(
         '/tasks/$taskId',
-        data: patch,
+        data: {
+          ...patch,
+          if (quiz != null) 'quiz': quiz,
+        },
       );
 
       final data = resp.data;
@@ -327,6 +333,73 @@ class TasksRepository {
         throw const AppError(
             code: 'TASK_UNAVAILABLE', message: 'Задание недоступно');
       }
+
+      throw _mapToRequiredError(e);
+    } catch (e) {
+      throw _mapToRequiredError(e);
+    }
+  }
+
+  // QUIZ API
+  Future<String> startQuizAttempt(String taskId) async {
+    try {
+      final resp = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/tasks/$taskId/quiz/attempts',
+      );
+      final data = resp.data;
+      if (data == null || data['attemptId'] is! String) {
+        throw const AppError(code: 'invalid_response', message: 'Invalid response');
+      }
+      return data['attemptId'] as String;
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      if (status == 409 && data is Map) {
+        final err = data['error'];
+        if (err is Map && (err['code']?.toString() ?? '') == 'NO_CHURCH') {
+          throw const AppError(code: 'NO_CHURCH', message: 'NO_CHURCH');
+        }
+      }
+
+      if (status == 401) throw const AppError(code: 'UNAUTHORIZED', message: 'UNAUTHORIZED');
+      if (status == 403) throw const AppError(code: 'FORBIDDEN', message: 'FORBIDDEN');
+
+      throw _mapToRequiredError(e);
+    } catch (e) {
+      throw _mapToRequiredError(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> submitQuizAttempt(
+    String taskId,
+    String attemptId,
+    List<Map<String, dynamic>> answers,
+  ) async {
+    try {
+      final resp = await _apiClient.dio.post<Map<String, dynamic>>(
+        '/tasks/$taskId/quiz/attempts/$attemptId/submit',
+        data: { 'answers': answers },
+      );
+      final data = resp.data;
+      if (data == null) {
+        throw const AppError(code: 'invalid_response', message: 'Invalid response');
+      }
+      // expected { scorePercent, isPassed }
+      return Map<String, dynamic>.from(data);
+    } on DioException catch (e) {
+      final status = e.response?.statusCode;
+      final data = e.response?.data;
+
+      if (status == 409 && data is Map) {
+        final err = data['error'];
+        if (err is Map && (err['code']?.toString() ?? '') == 'NO_CHURCH') {
+          throw const AppError(code: 'NO_CHURCH', message: 'NO_CHURCH');
+        }
+      }
+
+      if (status == 401) throw const AppError(code: 'UNAUTHORIZED', message: 'UNAUTHORIZED');
+      if (status == 403) throw const AppError(code: 'FORBIDDEN', message: 'FORBIDDEN');
 
       throw _mapToRequiredError(e);
     } catch (e) {

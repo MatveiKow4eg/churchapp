@@ -34,6 +34,12 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
   bool _aiTitleLoading = false;
   bool _aiDescLoading = false;
 
+  // QUIZ editor state
+  final _quizPassScoreCtrl = TextEditingController(text: '70');
+  final _quizMaxAttemptsCtrl = TextEditingController();
+  bool _quizShuffle = false;
+  final List<_QuizQuestionDraft> _quizQuestions = <_QuizQuestionDraft>[];
+
   late final TabController _tabController;
 
   final List<_BibleRefDraft> _refs = <_BibleRefDraft>[];
@@ -51,9 +57,14 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
     for (final r in _refs) {
       r.dispose();
     }
+    for (final q in _quizQuestions) {
+      q.dispose();
+    }
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _pointsCtrl.dispose();
+    _quizPassScoreCtrl.dispose();
+    _quizMaxAttemptsCtrl.dispose();
     super.dispose();
   }
 
@@ -295,11 +306,37 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
         bibleRefs,
       );
 
+      Map<String, dynamic>? quizPayload;
+      if (_category.trim().toUpperCase() == 'QUIZ') {
+        final passScore = int.tryParse(_quizPassScoreCtrl.text.trim()) ?? 70;
+        final maxAttStr = _quizMaxAttemptsCtrl.text.trim();
+        final maxAttempts = maxAttStr.isEmpty ? null : int.tryParse(maxAttStr);
+
+        final questions = _quizQuestions
+            .map((q) => q.toJson())
+            .where((q) => q != null)
+            .map((q) => q!)
+            .toList(growable: false);
+
+        if (questions.isEmpty) {
+          throw const AppError(
+              code: 'invalid_quiz', message: 'Добавь хотя бы один вопрос');
+        }
+
+        quizPayload = {
+          'passScore': passScore.clamp(0, 100),
+          if (maxAttempts != null) 'maxAttempts': maxAttempts,
+          'shuffleQuestions': _quizShuffle,
+          'questions': questions,
+        };
+      }
+
       await repo.createTask(
         title: _titleCtrl.text,
         description: description,
         category: _category,
         pointsReward: points,
+        quiz: quizPayload,
       );
 
       // Refresh list
@@ -434,6 +471,10 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                         child: Text('Рассуждение'),
                       ),
                       DropdownMenuItem(
+                        value: 'QUIZ',
+                        child: Text('Викторина'),
+                      ),
+                      DropdownMenuItem(
                         value: 'OTHER',
                         child: Text('Другое'),
                       ),
@@ -457,7 +498,20 @@ class _CreateTaskScreenState extends ConsumerState<CreateTaskScreen>
                     ),
                     validator: _validatePoints,
                   ),
-                  const SizedBox(height: 16),
+                  if (_category.trim().toUpperCase() == 'QUIZ') ...[
+                    _QuizEditor(
+                      passScoreCtrl: _quizPassScoreCtrl,
+                      maxAttemptsCtrl: _quizMaxAttemptsCtrl,
+                      shuffle: _quizShuffle,
+                      onShuffleChanged: (v) => setState(() => _quizShuffle = v),
+                      questions: _quizQuestions,
+                      onAddQuestion: () => setState(
+                        () => _quizQuestions.add(_QuizQuestionDraft.empty()),
+                      ),
+                      onChanged: () => setState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   FilledButton(
                     onPressed: (_saving || _aiTitleLoading || _aiDescLoading)
                         ? null
@@ -842,5 +896,311 @@ extension _IterableFirstOrNull<T> on Iterable<T> {
     final it = iterator;
     if (!it.moveNext()) return null;
     return it.current;
+  }
+}
+
+class _QuizEditor extends StatelessWidget {
+  const _QuizEditor({
+    required this.passScoreCtrl,
+    required this.maxAttemptsCtrl,
+    required this.shuffle,
+    required this.onShuffleChanged,
+    required this.questions,
+    required this.onAddQuestion,
+    required this.onChanged,
+  });
+
+  final TextEditingController passScoreCtrl;
+  final TextEditingController maxAttemptsCtrl;
+  final bool shuffle;
+  final ValueChanged<bool> onShuffleChanged;
+  final List<_QuizQuestionDraft> questions;
+  final VoidCallback onAddQuestion;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Викторина',
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: passScoreCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Порог прохождения, %',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => onChanged(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: maxAttemptsCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Макс. попыток (пусто = без лимита)',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (_) => onChanged(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: shuffle,
+          onChanged: onShuffleChanged,
+          title: const Text('Перемешивать вопросы'),
+        ),
+        const SizedBox(height: 8),
+        for (int i = 0; i < questions.length; i++) ...[
+          _QuizQuestionCard(
+            index: i,
+            draft: questions[i],
+            onChanged: onChanged,
+            onRemove: questions.length > 1
+                ? () {
+                    questions.removeAt(i).dispose();
+                    onChanged();
+                  }
+                : null,
+          ),
+          const SizedBox(height: 8),
+        ],
+        OutlinedButton.icon(
+          onPressed: onAddQuestion,
+          icon: const Icon(Icons.add),
+          label: const Text('Добавить вопрос'),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuizQuestionCard extends StatelessWidget {
+  const _QuizQuestionCard({
+    required this.index,
+    required this.draft,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final _QuizQuestionDraft draft;
+  final VoidCallback onChanged;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Вопрос ${index + 1}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                if (onRemove != null)
+                  IconButton(
+                    tooltip: 'Удалить вопрос',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: onRemove,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: draft.textCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Текст вопроса',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (_) => onChanged(),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: draft.multiSelect,
+              onChanged: (v) {
+                draft.multiSelect = v;
+                onChanged();
+              },
+              title: const Text('Несколько правильных вариантов'),
+            ),
+            const SizedBox(height: 8),
+            for (int j = 0; j < draft.options.length; j++) ...[
+              _QuizOptionRow(
+                index: j,
+                draft: draft.options[j],
+                onChanged: onChanged,
+                onRemove: draft.options.length > 2
+                    ? () {
+                        draft.options.removeAt(j).dispose();
+                        onChanged();
+                      }
+                    : null,
+              ),
+              const SizedBox(height: 6),
+            ],
+            OutlinedButton.icon(
+              onPressed: () {
+                draft.options.add(_QuizOptionDraft.empty());
+                onChanged();
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Добавить вариант'),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuizOptionRow extends StatelessWidget {
+  const _QuizOptionRow({
+    required this.index,
+    required this.draft,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final int index;
+  final _QuizOptionDraft draft;
+  final VoidCallback onChanged;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Checkbox(
+          value: draft.isCorrect,
+          onChanged: (v) {
+            draft.isCorrect = v ?? false;
+            onChanged();
+          },
+        ),
+        Expanded(
+          child: TextField(
+            controller: draft.textCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Вариант ответа',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (_) => onChanged(),
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (onRemove != null)
+          IconButton(
+            tooltip: 'Удалить',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: onRemove,
+          )
+      ],
+    );
+  }
+}
+
+class _QuizQuestionDraft {
+  _QuizQuestionDraft({
+    required this.textCtrl,
+    required this.multiSelect,
+    required this.options,
+  });
+
+  final TextEditingController textCtrl;
+  bool multiSelect;
+  final List<_QuizOptionDraft> options;
+
+  factory _QuizQuestionDraft.empty() => _QuizQuestionDraft(
+        textCtrl: TextEditingController(),
+        multiSelect: false,
+        options: [
+          _QuizOptionDraft.empty(),
+          _QuizOptionDraft.empty(),
+        ],
+      );
+
+  void dispose() {
+    textCtrl.dispose();
+    for (final o in options) {
+      o.dispose();
+    }
+  }
+
+  Map<String, dynamic>? toJson() {
+    final text = textCtrl.text.trim();
+    if (text.isEmpty) return null;
+
+    final opts = options
+        .map((o) => o.toJson())
+        .where((o) => o != null)
+        .map((o) => o!)
+        .toList(growable: false);
+
+    if (opts.length < 2) return null;
+    final hasCorrect = opts.any((o) => o['isCorrect'] == true);
+    if (!hasCorrect) return null;
+    if (multiSelect == false && opts.where((o) => o['isCorrect'] == true).length != 1) {
+      return null;
+    }
+
+    return {
+      'text': text,
+      'multiSelect': multiSelect,
+      'options': opts,
+    };
+  }
+}
+
+class _QuizOptionDraft {
+  _QuizOptionDraft({
+    required this.textCtrl,
+    required this.isCorrect,
+  });
+
+  final TextEditingController textCtrl;
+  bool isCorrect;
+
+  factory _QuizOptionDraft.empty() => _QuizOptionDraft(
+        textCtrl: TextEditingController(),
+        isCorrect: false,
+      );
+
+  void dispose() {
+    textCtrl.dispose();
+  }
+
+  Map<String, dynamic>? toJson() {
+    final text = textCtrl.text.trim();
+    if (text.isEmpty) return null;
+    return {
+      'text': text,
+      'isCorrect': isCorrect,
+    };
   }
 }

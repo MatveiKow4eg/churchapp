@@ -95,6 +95,12 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
           : int.tryParse('${result['scorePercent']}') ?? 0;
       final isPassed = result['isPassed'] == true;
 
+      // If quiz is failed and attempts are exhausted, backend creates REJECTED submission.
+      // Detect this state and change navigation/message accordingly.
+      // Determine whether attempts are exhausted based on the latest task state
+      // from backend, not on the stale `attemptsUsed` value passed into this screen.
+      bool isAttemptsExhausted = false;
+
       if (!mounted) return;
 
       await showDialog<void>(
@@ -103,7 +109,9 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
           title: const Text('Результат'),
           content: Text(isPassed
               ? 'Поздравляем! Тест пройден.\nРезультат: $score%'
-              : 'Тест не пройден.\nРезультат: $score%'),
+              : isAttemptsExhausted
+                  ? 'Тест не пройден.\nРезультат: $score%\n\nПопытки закончились.'
+                  : 'Тест не пройден.\nРезультат: $score%'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
@@ -114,25 +122,51 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
       );
 
       if (!mounted) return;
-      if (isPassed) {
-        // Викторина пройдена: награда/APPROVED создаются на сервере.
-        // Обновим списки, чтобы задача сразу пропала из "Задания".
-        ref.invalidate(tasksListProvider);
-        ref.invalidate(mySubmissionsListProvider);
 
+      // Force-refresh data from backend BEFORE leaving this screen.
+      // This prevents UI race conditions where the previous screen is shown
+      // before the REJECTED/APPROVED submission is visible.
+      await Future.wait([
+        ref.read(tasksListProvider.notifier).refresh(),
+        ref.read(mySubmissionsListProvider.notifier).refresh(),
+      ]);
+
+      // Re-check latest attemptsUsed for this task from the freshly loaded tasks list.
+      // If the task is no longer present in tasks list (hidden due to REJECTED/APPROVED),
+      // treat attempts as exhausted.
+      try {
+        final latestTasks = ref.read(tasksListProvider).valueOrNull;
+        final latestTask = latestTasks?.cast<TaskModel?>().firstWhere(
+              (t) => t?.id == widget.task.id,
+              orElse: () => null,
+            );
+        final max = widget.task.quiz?.maxAttempts;
+        final used = latestTask?.quiz?.attemptsUsed;
+        if (!isPassed && max != null && max > 0 && used != null && used >= max) {
+          isAttemptsExhausted = true;
+        }
+        // If task disappeared from active tasks list after refresh, it's decided (REJECTED/APPROVED)
+        // and should be treated as exhausted for navigation purposes.
+        if (!isPassed && latestTask == null && max != null && max > 0) {
+          isAttemptsExhausted = true;
+        }
+      } catch (_) {
+        // ignore
+      }
+
+      if (!mounted) return;
+      if (isPassed) {
         // Уходим к списку заданий
         context.go(AppRoutes.tasks);
       } else {
-        // Викторина не пройдена: если это была последняя попытка,
-        // сервер мог автоматически создать REJECTED submission.
-        // Обновим списки, что��ы она сразу появилась в "Мои заявки -> Отклонено",
-        // без перезапуска приложения.
-        ref.invalidate(tasksListProvider);
-        ref.invalidate(mySubmissionsListProvider);
-
-        // Возвращаемся к деталям задания
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
+        if (isAttemptsExhausted) {
+          // Последняя попытка потрачена -> заявка ушла в REJECTED.
+          context.go(AppRoutes.tasks);
+        } else {
+          // Попытки ещё есть -> возвращаемся на экран задания.
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          }
         }
       }
     } on AppError catch (e) {

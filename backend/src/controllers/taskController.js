@@ -160,6 +160,7 @@ async function getTaskById(req, res, next) {
       throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
     }
 
+    const userId = req.user?.id;
     const taskId = req.params.id;
 
     const task = await taskService.getTaskByIdFull(taskId);
@@ -188,10 +189,15 @@ async function getTaskById(req, res, next) {
 
     const isAdminRole = ['ADMIN', 'SUPERADMIN', 'DEVELOPER'].includes(req.user?.role);
 
+    const attemptsUsed = await taskService.prisma.quizAttempt.count({
+      where: { taskId: task.id, userId }
+    });
+
     const quiz = {
       shuffleQuestions: task.quiz.shuffleQuestions,
       maxAttempts: task.quiz.maxAttempts,
       passScore: task.quiz.passScore,
+      attemptsUsed,
       questions: task.quiz.questions.map((q) => ({
         id: q.id,
         text: q.text,

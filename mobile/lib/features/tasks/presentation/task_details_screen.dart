@@ -95,6 +95,36 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                                     ? 'Без категории'
                                     : localizeTaskCategory(task.category),
                               ),
+                              if (task.category.trim().toUpperCase() == 'QUIZ') ...[
+                                const SizedBox(width: 8),
+                                Builder(
+                                  builder: (context) {
+                                    final quiz = task.quiz;
+                                    final max = quiz?.maxAttempts;
+                                    final used = quiz?.attemptsUsed ?? 0;
+
+                                    if (max != null && max > 0) {
+                                      // attemptsUsed = how many attempts were already used
+                                      // left = remaining attempts
+                                      final left = (max - used).clamp(0, max);
+                                      return Text(
+                                        '$used/$max',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      );
+                                    }
+
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ],
                               const Spacer(),
                               Text(
                                 '+${task.pointsReward} очков',

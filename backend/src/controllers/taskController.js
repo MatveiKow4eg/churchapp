@@ -99,6 +99,9 @@ async function createTask(req, res, next) {
 
 async function listTasks(req, res, next) {
   try {
+    // This endpoint returns user-specific dynamic data (quiz.attemptsUsed).
+    // Disable HTTP caching to avoid stale values in the tasks list UI.
+    res.set('Cache-Control', 'no-store');
     const churchId = req.user?.churchId;
     if (!churchId) {
       throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');
@@ -154,6 +157,9 @@ async function listTasks(req, res, next) {
 
 async function getTaskById(req, res, next) {
   try {
+    // This endpoint returns user-specific dynamic data (quiz.attemptsUsed).
+    // Disable HTTP caching to avoid stale values in the task details UI.
+    res.set('Cache-Control', 'no-store');
     const churchId = req.user?.churchId;
     if (!churchId) {
       throw new HttpError(409, 'NO_CHURCH', 'User has no church selected');

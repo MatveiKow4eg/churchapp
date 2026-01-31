@@ -248,9 +248,11 @@ async function deactivateTask(taskId) {
 }
 
 async function deleteTask(taskId) {
-  // Hard delete task, but preserve user history.
-  // 1) Ensure snapshot fields on Submission are populated (task title/category/points)
-  // 2) Delete task (DB will SET NULL on Submission.taskId)
+  // Preserve user history by snapshotting task fields into submissions and DETACHING submissions
+  // before the task is deleted.
+  //
+  // This works even if some DB relations are still configured with ON DELETE CASCADE,
+  // because after detaching there are no Submission rows referencing the Task.
   return prisma.$transaction(async (tx) => {
     const task = await tx.task.findUnique({
       where: { id: taskId },
@@ -258,15 +260,15 @@ async function deleteTask(taskId) {
     });
 
     if (task) {
-      // Always write snapshot right before deletion.
-      // This guarantees the user still sees task text/category/points in submissions history
-      // even if the task is deleted and taskId becomes NULL.
+      // Snapshot to all submissions of this task (any status)
       await tx.submission.updateMany({
         where: { taskId },
         data: {
           taskTitle: task.title,
           taskCategory: task.category,
-          taskPointsReward: task.pointsReward
+          taskPointsReward: task.pointsReward,
+          // Detach so submissions are not removed by cascade.
+          taskId: null
         }
       });
     }

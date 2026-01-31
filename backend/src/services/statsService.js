@@ -34,7 +34,9 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'APPROVED',
-        // Count should NOT depend on Task existence: keep history even if Task is deleted.
+        // Count should NOT depend on Task existence.
+        // We count only submissions that still have taskId OR have a snapshot.
+        OR: [{ taskId: { not: null } }, { taskTitle: { not: null } }],
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
@@ -42,7 +44,8 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'REJECTED',
-        // Count should NOT depend on Task existence: keep history even if Task is deleted.
+        // Same rule as above.
+        OR: [{ taskId: { not: null } }, { taskTitle: { not: null } }],
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),

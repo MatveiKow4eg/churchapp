@@ -104,7 +104,10 @@ async function listMySubmissions(
 ) {
   const where = {
     userId,
-    ...(status ? { status } : {})
+    ...(status ? { status } : {}),
+    // Show history entries even if task was deleted.
+    // If taskId is NULL and snapshot is missing, the item is not useful in UI, so skip it.
+    OR: [{ taskId: { not: null } }, { taskTitle: { not: null } }]
   };
 
   const orderBy = { createdAt: sort === 'old' ? 'asc' : 'desc' };

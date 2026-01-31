@@ -25,6 +25,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
 
   const [
     tasksApprovedCount,
+    tasksRejectedCount,
     monthlyEntries,
     currentBalanceAgg,
     topCategoriesAgg
@@ -33,6 +34,13 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'APPROVED',
+        ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
+      }
+    }),
+    prisma.submission.count({
+      where: {
+        userId,
+        status: 'REJECTED',
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
@@ -104,6 +112,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
   return {
     month: monthYYYYMM,
     tasksApprovedCount,
+    tasksRejectedCount,
     pointsEarned,
     pointsSpent,
     netPoints: pointsEarned - pointsSpent,

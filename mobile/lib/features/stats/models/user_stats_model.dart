@@ -2,6 +2,7 @@ class UserStatsModel {
   const UserStatsModel({
     required this.month,
     required this.tasksApprovedCount,
+    required this.tasksRejectedCount,
     required this.pointsEarned,
     required this.pointsSpent,
     required this.netPoints,
@@ -11,6 +12,7 @@ class UserStatsModel {
 
   final String month;
   final int tasksApprovedCount;
+  final int tasksRejectedCount;
   final int pointsEarned;
   final int pointsSpent;
   final int netPoints;
@@ -25,6 +27,9 @@ class UserStatsModel {
       tasksApprovedCount: (json['tasksApprovedCount'] is num)
           ? (json['tasksApprovedCount'] as num).toInt()
           : int.tryParse((json['tasksApprovedCount'] ?? '0').toString()) ?? 0,
+      tasksRejectedCount: (json['tasksRejectedCount'] is num)
+          ? (json['tasksRejectedCount'] as num).toInt()
+          : int.tryParse((json['tasksRejectedCount'] ?? '0').toString()) ?? 0,
       pointsEarned: (json['pointsEarned'] is num)
           ? (json['pointsEarned'] as num).toInt()
           : int.tryParse((json['pointsEarned'] ?? '0').toString()) ?? 0,

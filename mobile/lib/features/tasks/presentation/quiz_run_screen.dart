@@ -51,10 +51,22 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // If user leaves the app during an active attempt, treat it as a spent attempt.
     // The attempt is already created on startQuizAttempt().
+    //
+    // IMPORTANT: this callback cannot be async. Also, waiting for network here is unreliable,
+    // because the OS may suspend the app immediately.
     if (_exiting) return;
     if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
       _exiting = true;
-      _exitToTaskDetails(showMessage: true);
+      // Fire-and-forget: try to refresh + exit. If the app is suspended immediately,
+      // the refresh may not complete, but task details/tasks list will refresh on next resume.
+      // Do not wait for network here. Just leave the quiz UI immediately.
+      // Data will refresh on the task screen.
+      Future.microtask(() {
+        if (!mounted) return;
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
+      });
     }
   }
 
@@ -82,18 +94,52 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen>
     return res == true;
   }
 
-  void _exitToTaskDetails({required bool showMessage}) {
+  Future<void> _exitToTaskDetails({required bool showMessage}) async {
     if (!mounted) return;
 
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
+    // Determine attemptsUsed/maxAttempts by fetching the task directly.
+    // This avoids relying on submissions list (which might not include this task object)
+    // and avoids race conditions with other filters.
+    bool attemptsExhausted = false;
+
+    try {
+      final repo = ref.read(tasksRepositoryProvider);
+      final freshTask = await repo.fetchTaskById(widget.task.id);
+      final max = freshTask.quiz?.maxAttempts;
+      final used = freshTask.quiz?.attemptsUsed;
+      if (max != null && max > 0 && used != null && used >= max) {
+        attemptsExhausted = true;
+      }
+    } catch (_) {
+      // ignore fetch errors
     }
 
-    if (showMessage && mounted) {
+    // Always refresh lists as well (so UI updates immediately).
+    try {
+      await Future.wait([
+        ref.read(tasksListProvider.notifier).refresh(),
+        ref.read(mySubmissionsListProvider.notifier).refresh(),
+      ]);
+    } catch (_) {
+      // ignore
+    }
+
+    if (!mounted) return;
+
+    if (attemptsExhausted) {
+      context.go(AppRoutes.tasks);
+    } else {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    }
+    if (showMessage && mounted && attemptsExhausted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(content: Text('Попытка засчитана. Вы вышли из викторины.')),
+          const SnackBar(
+            content: Text('Попытка засчитана. Попытки закончились.'),
+          ),
         );
     }
   }
@@ -269,7 +315,7 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen>
         final ok = await _confirmExit();
         if (ok) {
           _exiting = true;
-          _exitToTaskDetails(showMessage: true);
+          await _exitToTaskDetails(showMessage: true);
         }
       },
       child: Scaffold(
@@ -283,7 +329,7 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen>
               final ok = await _confirmExit();
               if (ok) {
                 _exiting = true;
-                _exitToTaskDetails(showMessage: true);
+                await _exitToTaskDetails(showMessage: true);
               }
             },
           ),

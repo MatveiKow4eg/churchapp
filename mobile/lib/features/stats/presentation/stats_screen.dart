@@ -239,7 +239,10 @@ class _StatsGrid extends StatelessWidget {
         final isWide = c.maxWidth >= 520;
 
         final cards = [
-          _StatCard(title: 'Выполнено', value: '${stats.tasksApprovedCount}'),
+          _StatCard(
+            title: 'Выполнено/Не выполнено',
+            value: '${stats.tasksApprovedCount}/${stats.tasksRejectedCount}',
+          ),
           _StatCard(title: 'Заработано', value: '${stats.pointsEarned}'),
           _StatCard(title: 'Потрачено', value: '${stats.pointsSpent}'),
           _StatCard(title: 'Баланс', value: '${stats.currentBalance}'),

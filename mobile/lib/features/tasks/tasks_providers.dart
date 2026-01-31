@@ -62,7 +62,23 @@ class TasksListNotifier extends AutoDisposeAsyncNotifier<List<TaskModel>> {
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    return tasks.where((t) => !hiddenTaskIds.contains(t.id)).toList();
+    // Also hide QUIZ tasks where attempts are already exhausted,
+    // even if there is no submission record (legacy data).
+    final blockedQuizTaskIds = tasks
+        .where((t) {
+          final quiz = t.quiz;
+          if (quiz == null) return false;
+          final max = quiz.maxAttempts;
+          if (max == null || max <= 0) return false;
+          final used = quiz.attemptsUsed ?? 0;
+          return used >= max;
+        })
+        .map((t) => t.id)
+        .toSet();
+
+    final allHidden = <String>{...hiddenTaskIds, ...blockedQuizTaskIds};
+
+    return tasks.where((t) => !allHidden.contains(t.id)).toList();
   }
 
   Future<void> handleAuthErrors(Object err) async {

@@ -287,6 +287,43 @@ async function startQuizAttempt({ userId, taskId }) {
     }
   });
 
+  // If this attempt makes user reach the maxAttempts limit (and they haven't passed yet),
+  // auto-create a REJECTED submission so the task moves to "My submissions -> Rejected".
+  if (task.quiz.maxAttempts && task.quiz.maxAttempts > 0) {
+    const attemptsCount = await prisma.quizAttempt.count({ where: { taskId, userId } });
+    if (attemptsCount >= task.quiz.maxAttempts) {
+      const approved = await prisma.submission.findFirst({
+        where: { userId, taskId, status: 'APPROVED' },
+        select: { id: true }
+      });
+
+      if (!approved) {
+        const existingRejected = await prisma.submission.findFirst({
+          where: { userId, taskId, status: 'REJECTED' },
+          select: { id: true }
+        });
+
+        if (existingRejected) {
+          await prisma.submission.update({
+            where: { id: existingRejected.id },
+            data: { decidedAt: new Date(), commentAdmin: 'MAX_ATTEMPTS_REACHED' }
+          });
+        } else {
+          await prisma.submission.create({
+            data: {
+              churchId: task.churchId,
+              userId,
+              taskId,
+              status: 'REJECTED',
+              decidedAt: new Date(),
+              commentAdmin: 'MAX_ATTEMPTS_REACHED'
+            }
+          });
+        }
+      }
+    }
+  }
+
   return attempt;
 }
 

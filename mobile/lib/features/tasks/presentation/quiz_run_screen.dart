@@ -19,20 +19,82 @@ class QuizRunScreen extends ConsumerStatefulWidget {
   ConsumerState<QuizRunScreen> createState() => _QuizRunScreenState();
 }
 
-class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
+class _QuizRunScreenState extends ConsumerState<QuizRunScreen>
+    with WidgetsBindingObserver {
   // questionId -> selected option IDs
   final Map<String, Set<String>> _selected = <String, Set<String>>{};
   bool _submitting = false;
   int _currentIndex = 0;
 
+  bool _exiting = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     final quiz = widget.task.quiz;
     if (quiz != null) {
       for (final q in quiz.questions) {
         _selected[q.id] = <String>{};
       }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // If user leaves the app during an active attempt, treat it as a spent attempt.
+    // The attempt is already created on startQuizAttempt().
+    if (_exiting) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _exiting = true;
+      _exitToTaskDetails(showMessage: true);
+    }
+  }
+
+  Future<bool> _confirmExit() async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Выйти из викторины?'),
+        content: const Text(
+          'Если выйти сейчас, попытка будет засчитана и вы вернётесь к заданию.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Остаться'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+
+    return res == true;
+  }
+
+  void _exitToTaskDetails({required bool showMessage}) {
+    if (!mounted) return;
+
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    if (showMessage && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Попытка засчитана. Вы вышли из викторины.')),
+        );
     }
   }
 
@@ -95,37 +157,11 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
           : int.tryParse('${result['scorePercent']}') ?? 0;
       final isPassed = result['isPassed'] == true;
 
-      // If quiz is failed and attempts are exhausted, backend creates REJECTED submission.
-      // Detect this state and change navigation/message accordingly.
-      // Determine whether attempts are exhausted based on the latest task state
-      // from backend, not on the stale `attemptsUsed` value passed into this screen.
       bool isAttemptsExhausted = false;
 
+      // Force-refresh data from backend BEFORE showing the result.
       if (!mounted) return;
 
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Результат'),
-          content: Text(isPassed
-              ? 'Поздравляем! Тест пройден.\nРезультат: $score%'
-              : isAttemptsExhausted
-                  ? 'Тест не пройден.\nРезультат: $score%\n\nПопытки закончились.'
-                  : 'Тест не пройден.\nРезультат: $score%'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-
-      if (!mounted) return;
-
-      // Force-refresh data from backend BEFORE leaving this screen.
-      // This prevents UI race conditions where the previous screen is shown
-      // before the REJECTED/APPROVED submission is visible.
       await Future.wait([
         ref.read(tasksListProvider.notifier).refresh(),
         ref.read(mySubmissionsListProvider.notifier).refresh(),
@@ -145,8 +181,6 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
         if (!isPassed && max != null && max > 0 && used != null && used >= max) {
           isAttemptsExhausted = true;
         }
-        // If task disappeared from active tasks list after refresh, it's decided (REJECTED/APPROVED)
-        // and should be treated as exhausted for navigation purposes.
         if (!isPassed && latestTask == null && max != null && max > 0) {
           isAttemptsExhausted = true;
         }
@@ -155,15 +189,46 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
       }
 
       if (!mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Результат'),
+          content: isPassed
+              ? Text('Поздравляем! Тест пройден.\nРезультат: $score%')
+              : isAttemptsExhausted
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Тест не пройден.\nРезультат: $score%'),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Попытки закончились',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                color: Theme.of(ctx).colorScheme.error,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                      ],
+                    )
+                  : Text('Тест не пройден.\nРезультат: $score%'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
       if (isPassed) {
-        // Уходим к списку заданий
         context.go(AppRoutes.tasks);
       } else {
         if (isAttemptsExhausted) {
-          // Последняя попытка потрачена -> заявка ушла в REJECTED.
           context.go(AppRoutes.tasks);
         } else {
-          // Попытки ещё есть -> возвращаемся на экран задания.
           if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop();
           }
@@ -196,152 +261,157 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
   Widget build(BuildContext context) {
     final quiz = widget.task.quiz;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Викторина'),
-        leading: IconButton(
-          tooltip: 'Назад',
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_exiting) return;
+        final ok = await _confirmExit();
+        if (ok) {
+          _exiting = true;
+          _exitToTaskDetails(showMessage: true);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Викторина'),
+          leading: IconButton(
+            tooltip: 'Назад',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () async {
+              if (_exiting) return;
+              final ok = await _confirmExit();
+              if (ok) {
+                _exiting = true;
+                _exitToTaskDetails(showMessage: true);
+              }
+            },
+          ),
         ),
-      ),
-      body: (quiz == null || quiz.questions.isEmpty)
-          ? const Center(child: Text('Нет вопросов'))
-          : SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.task.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                                                        if (quiz.maxAttempts != null)
-                              _Badge(
-                                text: 'Попыток: ${quiz.maxAttempts}',
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Прогресс прохождения
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    child: LinearProgressIndicator(
-                      value: quiz.questions.isEmpty
-                          ? 0
-                          : (_currentIndex + 1) / quiz.questions.length,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Один вопрос за раз
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Builder(
-                        builder: (context) {
-                          final q = quiz.questions[_currentIndex];
-                          final selected = _selected[q.id] ?? <String>{};
-                          return Card(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    'Вопрос ${_currentIndex + 1} из ${quiz.questions.length}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    q.text,
-                                    style: Theme.of(context).textTheme.bodyLarge,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  // Варианты
-                                  Expanded(
-                                    child: ListView(
-                                      children: q.options.map((opt) {
-                                        if (q.multiSelect) {
-                                          final isChecked = selected.contains(opt.id);
-                                          return CheckboxListTile(
-                                            value: isChecked,
-                                            onChanged: (v) => _toggleMulti(q.id, opt.id, v ?? false),
-                                            controlAffinity: ListTileControlAffinity.leading,
-                                            title: Text(opt.text),
-                                          );
-                                        } else {
-                                          return RadioListTile<String>(
-                                            value: opt.id,
-                                            groupValue: selected.isNotEmpty ? selected.first : null,
-                                            onChanged: (_) => _toggleSingle(q.id, opt.id),
-                                            title: Text(opt.text),
-                                          );
-                                        }
-                                      }).toList(growable: false),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  // Только вперёд или сдача на последнем вопросе
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: Row(
+        body: (quiz == null || quiz.questions.isEmpty)
+            ? const Center(child: Text('Нет вопросов'))
+            : SafeArea(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_currentIndex < quiz.questions.length - 1)
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: _goNext,
-                                icon: const Icon(Icons.chevron_right),
-                                label: const Text('Далее'),
-                              ),
-                            )
-                          else
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: _submitting ? null : _submit,
-                                child: _submitting
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      )
-                                    : const Text('Сдать'),
-                              ),
-                            ),
+                          Text(
+                            widget.task.title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 6),
+                          const SizedBox.shrink(),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                      child: LinearProgressIndicator(
+                        value: quiz.questions.isEmpty
+                            ? 0
+                            : (_currentIndex + 1) / quiz.questions.length,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                        child: Builder(
+                          builder: (context) {
+                            final q = quiz.questions[_currentIndex];
+                            final selected = _selected[q.id] ?? <String>{};
+                            return Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Text(
+                                      'Вопрос ${_currentIndex + 1} из ${quiz.questions.length}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(fontWeight: FontWeight.w800),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      q.text,
+                                      style: Theme.of(context).textTheme.bodyLarge,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Expanded(
+                                      child: ListView(
+                                        children: q.options.map((opt) {
+                                          if (q.multiSelect) {
+                                            final isChecked = selected.contains(opt.id);
+                                            return CheckboxListTile(
+                                              value: isChecked,
+                                              onChanged: (v) => _toggleMulti(q.id, opt.id, v ?? false),
+                                              controlAffinity: ListTileControlAffinity.leading,
+                                              title: Text(opt.text),
+                                            );
+                                          } else {
+                                            return RadioListTile<String>(
+                                              value: opt.id,
+                                              groupValue: selected.isNotEmpty ? selected.first : null,
+                                              onChanged: (_) => _toggleSingle(q.id, opt.id),
+                                              title: Text(opt.text),
+                                            );
+                                          }
+                                        }).toList(growable: false),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Row(
+                          children: [
+                            if (_currentIndex < quiz.questions.length - 1)
+                              Expanded(
+                                child: FilledButton.icon(
+                                  onPressed: _goNext,
+                                  icon: const Icon(Icons.chevron_right),
+                                  label: const Text('Далее'),
+                                ),
+                              )
+                            else
+                              Expanded(
+                                child: FilledButton(
+                                  onPressed: _submitting ? null : _submit,
+                                  child: _submitting
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                        )
+                                      : const Text('Сдать'),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 }

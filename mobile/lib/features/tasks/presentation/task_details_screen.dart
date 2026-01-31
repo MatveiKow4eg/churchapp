@@ -281,6 +281,44 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                       child: FilledButton(
                         onPressed: () async {
                           try {
+                            // Show quiz rules before starting.
+                            final quiz = task.quiz;
+                            final maxAttempts = quiz?.maxAttempts;
+                            final attemptsUsed = quiz?.attemptsUsed ?? 0;
+                            final passScore = quiz?.passScore ?? 70;
+
+                            final canStart = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Перед началом'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Правила викторины:'),
+                                    const SizedBox(height: 8),
+                                    const Text('• Отвечайте внимательно — после отправки ответы изменить нельзя.'),
+                                    Text('• Проходной балл: $passScore%.'),
+                                    if (maxAttempts != null && maxAttempts > 0)
+                                      Text('• Попыток: $maxAttempts (использовано: $attemptsUsed).'),
+                                    const Text('• Нельзя выходить из приложения во время прохождения.'),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Отмена'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Начать'),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (canStart != true) return;
+
                             final repo = ref.read(tasksRepositoryProvider);
                             final attemptId = await repo.startQuizAttempt(task.id);
                             if (!mounted) return;
@@ -289,6 +327,9 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                                 builder: (_) => QuizRunScreen(task: task, attemptId: attemptId),
                               ),
                             );
+
+                            // After returning from quiz, refresh task details to update attemptsUsed.
+                            ref.invalidate(taskByIdProvider(widget.taskId));
                           } on AppError catch (e) {
                             if (e.code == 'NO_CHURCH') {
                               if (!mounted) return; context.go(AppRoutes.church); return;

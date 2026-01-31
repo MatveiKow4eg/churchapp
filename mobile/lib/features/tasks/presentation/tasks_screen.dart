@@ -209,10 +209,9 @@ class _TaskCard extends StatelessWidget {
                         if (max == null) return const SizedBox.shrink();
 
                         final used = (quizAttemptsUsed ?? 0).clamp(0, max);
-                        final left = (max - used).clamp(0, max);
 
                         return Text(
-                          '$left/$max',
+                          '$used/$max',
                           style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,

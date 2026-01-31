@@ -96,11 +96,15 @@ class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
               final s = items[i];
               final task = s.task;
 
+              final effectiveTitle = task?.title ?? (s.taskTitle?.trim().isNotEmpty == true ? s.taskTitle!.trim() : 'Задание');
+              final effectiveCategory = task?.category ?? (s.taskCategory ?? '');
+              final effectivePointsReward = task?.pointsReward ?? (s.taskPointsReward ?? 0);
+
               final statusWidget = _StatusChip(status: s.status);
 
               final pointsText = switch (s.status) {
                 'APPROVED' => '+${s.rewardPointsApplied ?? 0}',
-                'PENDING' => '+${task?.pointsReward ?? 0} (ожидается)',
+                'PENDING' => '+$effectivePointsReward (ожидается)',
                 'REJECTED' => '0',
                 _ => '0',
               };
@@ -117,10 +121,10 @@ class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
                   builder: (sheetContext) {
                     final theme = Theme.of(sheetContext);
 
-                    final taskTitle = task?.title ?? 'Задание';
-                    final catText = task == null
+                    final taskTitle = effectiveTitle;
+                    final catText = effectiveCategory.isEmpty
                         ? '—'
-                        : localizeTaskCategory(task.category);
+                        : localizeTaskCategory(effectiveCategory);
 
                     final statusLabel = switch (s.status) {
                       'PENDING' => 'Ожидает',
@@ -134,7 +138,7 @@ class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
                         s.decidedAt == null ? null : _formatDate(s.decidedAt!);
 
                     final pointsApplied = s.rewardPointsApplied;
-                    final pointsRequested = task?.pointsReward;
+                    final pointsRequested = effectivePointsReward;
 
                     return SafeArea(
                       child: Padding(
@@ -238,7 +242,7 @@ class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
                           children: [
                           Expanded(
                             child: Text(
-                              task?.title ?? 'Задание',
+                              effectiveTitle,
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -262,9 +266,9 @@ class _MySubmissionsScreenState extends ConsumerState<MySubmissionsScreen> {
                       Row(
                         children: [
                           _Badge(
-                            text: task == null
+                            text: effectiveCategory.isEmpty
                                 ? '—'
-                                : localizeTaskCategory(task.category),
+                                : localizeTaskCategory(effectiveCategory),
                           ),
                           const SizedBox(width: 8),
                           statusWidget,

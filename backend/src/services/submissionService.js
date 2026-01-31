@@ -27,7 +27,14 @@ async function createSubmission({ userId, taskId, commentUser }) {
   // 2) task должен существовать, быть активным и принадлежать той же церкви
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { id: true, churchId: true, isActive: true }
+    select: {
+      id: true,
+      churchId: true,
+      isActive: true,
+      title: true,
+      category: true,
+      pointsReward: true
+    }
   });
 
   if (!task) {
@@ -71,6 +78,10 @@ async function createSubmission({ userId, taskId, commentUser }) {
         churchId: user.churchId,
         userId,
         taskId,
+        // snapshot
+        taskTitle: task.title,
+        taskCategory: task.category,
+        taskPointsReward: task.pointsReward,
         commentUser
       }
     });
@@ -105,7 +116,19 @@ async function listMySubmissions(
       orderBy,
       take: limit,
       skip: offset,
-      include: {
+      select: {
+        id: true,
+        status: true,
+        createdAt: true,
+        decidedAt: true,
+        commentUser: true,
+        commentAdmin: true,
+        rewardPointsApplied: true,
+        // snapshot
+        taskTitle: true,
+        taskCategory: true,
+        taskPointsReward: true,
+        // live task (may be null if deleted)
         task: {
           select: {
             id: true,

@@ -38,6 +38,10 @@ class SubmissionModel {
     this.commentAdmin,
     this.rewardPointsApplied,
     this.task,
+    // snapshot (used when task is deleted)
+    this.taskTitle,
+    this.taskCategory,
+    this.taskPointsReward,
   });
 
   final String id;
@@ -48,6 +52,10 @@ class SubmissionModel {
   final String? commentAdmin;
   final int? rewardPointsApplied;
   final SubmissionTaskInfo? task;
+
+  final String? taskTitle;
+  final String? taskCategory;
+  final int? taskPointsReward;
 
   factory SubmissionModel.fromJson(Map<String, dynamic> json) {
     DateTime parseDt(Object? v) {
@@ -72,6 +80,14 @@ class SubmissionModel {
 
     final rawTask = json['task'];
 
+    final tpr = json['taskPointsReward'];
+    final taskPointsReward = switch (tpr) {
+      null => null,
+      final num n => n.toInt(),
+      final String s => int.tryParse(s),
+      _ => null,
+    };
+
     return SubmissionModel(
       id: (json['id'] as String?) ?? '',
       status: (json['status'] as String?) ?? '',
@@ -83,6 +99,9 @@ class SubmissionModel {
       task: rawTask is Map
           ? SubmissionTaskInfo.fromJson(Map<String, dynamic>.from(rawTask))
           : null,
+      taskTitle: (json['taskTitle'] as String?),
+      taskCategory: (json['taskCategory'] as String?),
+      taskPointsReward: taskPointsReward,
     );
   }
 }

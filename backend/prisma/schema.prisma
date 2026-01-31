@@ -200,6 +200,12 @@ model Submission {
   taskId String?
   task   Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
+  /// Snapshot of task fields at the time of submission creation.
+  /// This allows showing task text even if the Task is deleted later.
+  taskTitle        String?
+  taskCategory     TaskCategory?
+  taskPointsReward Int?
+
   userId String
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

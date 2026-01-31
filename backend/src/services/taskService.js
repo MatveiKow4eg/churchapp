@@ -248,19 +248,13 @@ async function deactivateTask(taskId) {
 }
 
 async function deleteTask(taskId) {
-  // Hard delete task, but preserve submissions history (APPROVED/REJECTED) for users.
+  // Hard delete. Submissions history is preserved by DB constraints:
+  // Submission.taskId must be nullable and FK must be ON DELETE SET NULL.
   //
-  // Even if DB FK is still configured as CASCADE (e.g. migration not applied yet),
-  // we defensively detach submissions from the task first.
-  return prisma.$transaction(async (tx) => {
-    // Detach all submissions (any status) so they stay visible in /submissions/mine and /stats.
-    await tx.submission.updateMany({
-      where: { taskId },
-      data: { taskId: null }
-    });
-
-    // Now the task can be safely deleted without removing user history.
-    return tx.task.delete({ where: { id: taskId } });
+  // If you see P2011 (Null constraint violation on taskId) when deleting a task,
+  // it means the database migration was not applied.
+  return prisma.task.delete({
+    where: { id: taskId }
   });
 }
 

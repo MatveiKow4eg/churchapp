@@ -248,15 +248,9 @@ async function deactivateTask(taskId) {
 }
 
 async function deleteTask(taskId) {
-  // IMPORTANT:
-  // Do NOT hard-delete tasks, because Submission.task has onDelete: Cascade in Prisma schema.
-  // Hard delete would remove all submissions history (APPROVED/REJECTED), which must stay
-  // visible in /submissions/mine and /stats.
-  //
-  // So "delete" is implemented as a soft-delete via deactivation.
-  return prisma.task.update({
-    where: { id: taskId },
-    data: { isActive: false }
+  // Hard delete. Submissions history is preserved because Submission.task uses onDelete: SetNull.
+  return prisma.task.delete({
+    where: { id: taskId }
   });
 }
 

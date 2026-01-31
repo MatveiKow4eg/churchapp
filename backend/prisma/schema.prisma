@@ -197,8 +197,8 @@ model Submission {
   churchId String
   church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
 
-  taskId String
-  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId String?
+  task   Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
 
   userId String
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)

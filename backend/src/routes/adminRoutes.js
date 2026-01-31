@@ -287,6 +287,53 @@ router.get('/users/:id/points', async (req, res, next) => {
   }
 });
 
+// GET /admin/users/:id/points/ledger
+// Access: ADMIN+ (user must be in the same church)
+// Query: ?take=20
+router.get('/users/:id/points/ledger', async (req, res, next) => {
+  try {
+    const churchId = req.user?.churchId;
+    if (!churchId) {
+      return res.status(409).json({ error: { code: 'NO_CHURCH', message: 'User has no church selected' } });
+    }
+
+    const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, churchId: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    if (user.churchId !== churchId) {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+    }
+
+    const takeRaw = req.query?.take;
+    const take = Math.max(1, Math.min(100, Number.parseInt((takeRaw ?? '20').toString(), 10) || 20));
+
+    const items = await prisma.pointsLedger.findMany({
+      where: { churchId, userId },
+      orderBy: [{ createdAt: 'desc' }],
+      take,
+      select: {
+        id: true,
+        type: true,
+        amount: true,
+        meta: true,
+        createdAt: true
+      }
+    });
+
+    return res.json({ userId, churchId, items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // POST /admin/points/adjust
 // Access: ADMIN+ (scoped by req.user.churchId)
 // Body: { userId, amount (int, can be negative), reason }

@@ -23,3 +23,10 @@ final selectedUserPointsProvider = FutureProvider<UserPointsDto?>((ref) async {
   final repo = ref.watch(adminPointsRepositoryProvider);
   return repo.getUserPoints(userId: userId);
 });
+
+final selectedUserPointsLedgerProvider = FutureProvider<List<PointsLedgerEntryDto>>((ref) async {
+  final userId = ref.watch(selectedPointsUserIdProvider);
+  if (userId == null || userId.trim().isEmpty) return const [];
+  final repo = ref.watch(adminPointsRepositoryProvider);
+  return repo.getUserPointsLedger(userId: userId, take: 20);
+});

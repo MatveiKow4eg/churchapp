@@ -46,6 +46,7 @@ class _AdminPointsScreenState extends ConsumerState<AdminPointsScreen> {
             onPressed: () {
               ref.invalidate(churchUsersProvider);
               ref.invalidate(selectedUserPointsProvider);
+              ref.invalidate(selectedUserPointsLedgerProvider);
             },
             icon: const Icon(Icons.refresh),
           ),
@@ -286,9 +287,11 @@ class _UserPointsSheetState extends ConsumerState<_UserPointsSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: 18),
+              _LedgerBlock(userId: widget.user.id),
               const Spacer(),
               Text(
-                'Примечание: изменения пишутся в ledger как ADMIN_ADJUST (аудит).',
+                'Примечание: ручные изменения пишутся в ledger как ADMIN_ADJUSTMENT (аудит).',
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
@@ -312,10 +315,11 @@ class _UserPointsSheetState extends ConsumerState<_UserPointsSheet> {
       );
 
       ref.invalidate(selectedUserPointsProvider);
+      ref.invalidate(selectedUserPointsLedgerProvider);
 
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Готово. Новый баланс: $newBalance')),
+        SnackBar(content: Text('Готово. Нов��й баланс: $newBalance')),
       );
     } catch (e) {
       if (!context.mounted) return;
@@ -325,5 +329,130 @@ class _UserPointsSheetState extends ConsumerState<_UserPointsSheet> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+}
+
+class _LedgerBlock extends ConsumerWidget {
+  const _LedgerBlock({required this.userId});
+
+  final String userId;
+
+  String _typeLabel(String type) {
+    final t = type.trim().toUpperCase();
+    switch (t) {
+      case 'TASK_REWARD':
+        return 'Награда за задание';
+      case 'PURCHASE':
+        return 'Покупка';
+      case 'ADMIN_ADJUSTMENT':
+        return 'Ручная корректировка';
+      default:
+        return t.isEmpty ? 'Операция' : t;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(selectedUserPointsLedgerProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(
+              'История (последние 20)',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Обновить историю',
+              onPressed: () => ref.invalidate(selectedUserPointsLedgerProvider),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        async.when(
+          data: (items) {
+            if (items.isEmpty) {
+              return Text(
+                'Пока нет операций',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              );
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).dividerColor),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final e = items[index];
+                  final isMinus = e.amount < 0;
+                  final amountText = isMinus ? '${e.amount}' : '+${e.amount}';
+                  final amountColor = isMinus
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary;
+
+                  final date = e.createdAt;
+                  final dd = date.day.toString().padLeft(2, '0');
+                  final mm = date.month.toString().padLeft(2, '0');
+                  final hh = date.hour.toString().padLeft(2, '0');
+                  final min = date.minute.toString().padLeft(2, '0');
+
+                  final reason = (e.reason ?? '').trim();
+
+                  return ListTile(
+                    dense: true,
+                    title: Row(
+                      children: [
+                        Text(
+                          amountText,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w800, color: amountColor),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _typeLabel(e.type),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text('$dd.$mm $hh:$min', style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                    subtitle: reason.isEmpty
+                        ? null
+                        : Text(
+                            'Причина: $reason',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: LinearProgressIndicator(),
+          ),
+          error: (e, _) => Text('Ошибка истории: $e'),
+        ),
+      ],
+    );
   }
 }

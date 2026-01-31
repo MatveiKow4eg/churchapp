@@ -304,7 +304,7 @@ router.post('/points/adjust', validate({ body: adminAdjustSchema }), async (req,
     await pointsService.addEntry({
       churchId,
       userId,
-      type: 'ADMIN_ADJUST',
+      type: 'ADMIN_ADJUSTMENT',
       amount,
       meta: {
         reason,

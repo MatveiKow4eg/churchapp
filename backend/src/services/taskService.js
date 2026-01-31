@@ -248,13 +248,35 @@ async function deactivateTask(taskId) {
 }
 
 async function deleteTask(taskId) {
-  // Hard delete. Submissions history is preserved by DB constraints:
-  // Submission.taskId must be nullable and FK must be ON DELETE SET NULL.
-  //
-  // If you see P2011 (Null constraint violation on taskId) when deleting a task,
-  // it means the database migration was not applied.
-  return prisma.task.delete({
-    where: { id: taskId }
+  // Hard delete task, but preserve user history.
+  // 1) Ensure snapshot fields on Submission are populated (task title/category/points)
+  // 2) Delete task (DB will SET NULL on Submission.taskId)
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.findUnique({
+      where: { id: taskId },
+      select: { id: true, title: true, category: true, pointsReward: true }
+    });
+
+    if (task) {
+      // Populate snapshot only if it's missing, so we don't overwrite historical values.
+      await tx.submission.updateMany({
+        where: {
+          taskId,
+          OR: [
+            { taskTitle: null },
+            { taskCategory: null },
+            { taskPointsReward: null }
+          ]
+        },
+        data: {
+          taskTitle: task.title,
+          taskCategory: task.category,
+          taskPointsReward: task.pointsReward
+        }
+      });
+    }
+
+    return tx.task.delete({ where: { id: taskId } });
   });
 }
 

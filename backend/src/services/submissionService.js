@@ -110,9 +110,19 @@ async function listMySubmissions(
     OR: [{ taskId: { not: null } }, { taskTitle: { not: null } }]
   };
 
+  // De-duplicate: keep only the latest submission per task.
+  // For deleted tasks we use taskTitle as a best-effort key.
+  // This prevents showing both REJECTED (auto-created) and APPROVED for the same task.
+  const dedupeKey = (s) => {
+    if (s.taskId) return `task:${s.taskId}`;
+    if (s.task && s.task.id) return `task:${s.task.id}`;
+    if (s.taskTitle && s.taskTitle.trim()) return `title:${s.taskTitle.trim()}`;
+    return `sub:${s.id}`;
+  };
+
   const orderBy = { createdAt: sort === 'old' ? 'asc' : 'desc' };
 
-  const [total, items] = await prisma.$transaction([
+  const [total, rawItems] = await prisma.$transaction([
     prisma.submission.count({ where }),
     prisma.submission.findMany({
       where,
@@ -139,12 +149,36 @@ async function listMySubmissions(
             pointsReward: true,
             category: true
           }
-        }
+        },
+        // for dedupe
+        taskId: true
       }
     })
   ]);
 
-  return { items, total };
+  const map = new Map();
+  for (const s of rawItems) {
+    const key = dedupeKey(s);
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, s);
+      continue;
+    }
+
+    // Keep the most recent by decidedAt/createdAt.
+    finalDate = (x) => x.decidedAt ?? x.createdAt;
+    const a = finalDate(existing);
+    const b = finalDate(s);
+    if (b > a) map.set(key, s);
+  }
+
+  const items = Array.from(map.values()).sort((a, b) => {
+    const da = (a.decidedAt ?? a.createdAt).getTime();
+    const db = (b.decidedAt ?? b.createdAt).getTime();
+    return db - da;
+  });
+
+  return { items, total: items.length };
 }
 
 async function listPendingForChurch(

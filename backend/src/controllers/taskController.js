@@ -123,6 +123,7 @@ async function listTasks(req, res, next) {
     // В списке НЕ возвращаем вопросы/варианты (экономия трафика и не раскрываем ответы),
     // но мета для UI (например maxAttempts) можно отдавать.
     return res.status(200).json({
+      debugVersion: 'tasks_list_v2_attemptsUsed_groupBy',
       items: items.map((t) => ({
         id: t.id,
         title: t.title,
@@ -135,9 +136,7 @@ async function listTasks(req, res, next) {
           ? {
               quiz: {
                 maxAttempts: t.quiz.maxAttempts,
-                attemptsUsed: Array.isArray(t.quizAttempts)
-                    ? t.quizAttempts.length
-                    : 0,
+                attemptsUsed: typeof t._attemptsUsed === 'number' ? t._attemptsUsed : 0,
                 passScore: t.quiz.passScore,
                 shuffleQuestions: t.quiz.shuffleQuestions
               }
@@ -189,9 +188,11 @@ async function getTaskById(req, res, next) {
 
     const isAdminRole = ['ADMIN', 'SUPERADMIN', 'DEVELOPER'].includes(req.user?.role);
 
-    const attemptsUsed = await taskService.prisma.quizAttempt.count({
-      where: { taskId: task.id, userId }
-    });
+    const attemptsUsed = userId
+      ? await taskService.prisma.quizAttempt.count({
+          where: { taskId: task.id, userId }
+        })
+      : 0;
 
     const quiz = {
       shuffleQuestions: task.quiz.shuffleQuestions,

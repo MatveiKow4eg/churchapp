@@ -17,7 +17,7 @@ async function listTasks({
   offset = 0,
   userId
 }) {
-  return prisma.task.findMany({
+  const tasks = await prisma.task.findMany({
     where: {
       churchId,
       ...(activeOnly ? { isActive: true } : {}),
@@ -36,6 +36,27 @@ async function listTasks({
     take: limit,
     skip: offset
   });
+
+  if (!userId) return tasks;
+
+  const taskIds = tasks.map((t) => t.id);
+  if (taskIds.length === 0) return tasks;
+
+  const counts = await prisma.quizAttempt.groupBy({
+    by: ['taskId'],
+    where: {
+      userId,
+      taskId: { in: taskIds }
+    },
+    _count: { _all: true }
+  });
+
+  const attemptsMap = new Map(counts.map((c) => [c.taskId, c._count._all]));
+
+  return tasks.map((t) => ({
+    ...t,
+    _attemptsUsed: attemptsMap.get(t.id) ?? 0
+  }));
 }
 
 async function getTaskById(taskId) {

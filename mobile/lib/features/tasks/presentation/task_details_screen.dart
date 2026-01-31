@@ -105,10 +105,9 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
 
                                     if (max != null && max > 0) {
                                       // attemptsUsed = how many attempts were already used
-                                      // left = remaining attempts
-                                      final left = (max - used).clamp(0, max);
+                                      final usedClamped = used.clamp(0, max);
                                       return Text(
-                                        '$used/$max',
+                                        '$usedClamped/$max',
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelLarge

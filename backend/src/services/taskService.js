@@ -473,9 +473,11 @@ async function submitQuizAttempt({ userId, taskId, attemptId, answers }) {
             taskId,
             status: 'APPROVED',
             decidedAt: new Date(),
-            rewardPointsApplied: task.pointsReward
+            rewardPointsApplied: task.pointsReward,
+            // Mark as not applied yet so we can safely award XP below.
+            xpAppliedAt: null
           },
-          select: { id: true }
+          select: { id: true, xpAppliedAt: true }
         });
 
         await tx.pointsLedger.create({

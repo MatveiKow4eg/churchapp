@@ -55,12 +55,14 @@ class QuizModel {
   const QuizModel({
     required this.passScore,
     this.maxAttempts,
+    this.attemptsUsed,
     required this.shuffleQuestions,
     required this.questions,
   });
 
   final int passScore; // 0..100
   final int? maxAttempts; // null => unlimited
+  final int? attemptsUsed; // from list endpoint
   final bool shuffleQuestions;
   final List<QuizQuestionModel> questions;
 
@@ -71,6 +73,8 @@ class QuizModel {
     final maxAttempts =
         ma == null ? null : (ma is num ? ma.toInt() : int.tryParse('$ma'));
     final sh = json['shuffleQuestions'] == true;
+    final au = json['attemptsUsed'];
+    final attemptsUsed = au == null ? null : (au is num ? au.toInt() : int.tryParse('$au'));
 
     final qs = json['questions'];
     final questions = (qs is List)
@@ -85,6 +89,7 @@ class QuizModel {
     return QuizModel(
       passScore: passScore,
       maxAttempts: maxAttempts,
+      attemptsUsed: attemptsUsed,
       shuffleQuestions: sh,
       questions: questions,
     );

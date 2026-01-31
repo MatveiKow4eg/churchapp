@@ -116,10 +116,12 @@ async function listTasks(req, res, next) {
       activeOnly,
       category,
       limit,
-      offset
+      offset,
+      userId: req.user?.id
     });
 
-    // Список оставляем без детальной структуры квиза (для экономии трафика/безопасности)
+    // В списке НЕ возвращаем вопросы/варианты (экономия трафика и не раскрываем ответы),
+    // но мета для UI (например maxAttempts) можно отдавать.
     return res.status(200).json({
       items: items.map((t) => ({
         id: t.id,
@@ -128,7 +130,19 @@ async function listTasks(req, res, next) {
         category: t.category,
         pointsReward: t.pointsReward,
         isActive: t.isActive,
-        createdAt: t.createdAt
+        createdAt: t.createdAt,
+        ...(t.quiz
+          ? {
+              quiz: {
+                maxAttempts: t.quiz.maxAttempts,
+                attemptsUsed: Array.isArray(t.quizAttempts)
+                    ? t.quizAttempts.length
+                    : 0,
+                passScore: t.quiz.passScore,
+                shuffleQuestions: t.quiz.shuffleQuestions
+              }
+            }
+          : {})
       })),
       limit,
       offset,
@@ -172,6 +186,8 @@ async function getTaskById(req, res, next) {
       return res.status(200).json({ task: base });
     }
 
+    const isAdminRole = ['ADMIN', 'SUPERADMIN', 'DEVELOPER'].includes(req.user?.role);
+
     const quiz = {
       shuffleQuestions: task.quiz.shuffleQuestions,
       maxAttempts: task.quiz.maxAttempts,
@@ -180,7 +196,9 @@ async function getTaskById(req, res, next) {
         id: q.id,
         text: q.text,
         multiSelect: q.multiSelect,
-        options: q.options.map((o) => ({ id: o.id, text: o.text }))
+        options: q.options.map((o) => (
+          isAdminRole ? { id: o.id, text: o.text, isCorrect: o.isCorrect } : { id: o.id, text: o.text }
+        ))
       }))
     };
 

@@ -9,6 +9,7 @@ import '../tasks_providers.dart';
 import '../../../core/ui/task_category_i18n.dart';
 import '../../../core/ui/bible_refs.dart';
 import '../../tasks/task_draft_providers.dart';
+import 'quiz_run_screen.dart';
 
 class TaskDetailsScreen extends ConsumerStatefulWidget {
   const TaskDetailsScreen({super.key, required this.taskId});
@@ -244,29 +245,64 @@ class _TaskDetailsScreenState extends ConsumerState<TaskDetailsScreen> {
                     ),
                   ),
                   const Spacer(),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      style: ButtonStyle(
-                        // Disable any pressed/hover/focus overlay ("halo")
-                        overlayColor:
-                            WidgetStateProperty.all(Colors.transparent),
-                        // Disable ripple splash entirely.
-                        splashFactory: NoSplash.splashFactory,
+                  if (task.category.trim().toUpperCase() == 'QUIZ') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: () async {
+                          try {
+                            final repo = ref.read(tasksRepositoryProvider);
+                            final attemptId = await repo.startQuizAttempt(task.id);
+                            if (!mounted) return;
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => QuizRunScreen(task: task, attemptId: attemptId),
+                              ),
+                            );
+                          } on AppError catch (e) {
+                            if (e.code == 'NO_CHURCH') {
+                              if (!mounted) return; context.go(AppRoutes.church); return;
+                            }
+                            if (e.code == 'UNAUTHORIZED') {
+                              if (!mounted) return; context.go(AppRoutes.register); return;
+                            }
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(SnackBar(content: Text(e.message)));
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context)
+                              ..hideCurrentSnackBar()
+                              ..showSnackBar(SnackBar(content: Text(e.toString())));
+                          }
+                        },
+                        child: const Text('Начать викторину'),
                       ),
-                      onPressed: () => _openSubmitSheet(
-                        context,
-                        taskCategory: task.category,
-                      ),
-                      child: const Text('Выполнено'),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: () => context.go(AppRoutes.submissionsMine),
-                    child: const Text('Мои заявки'),
-                  ),
+                  ] else ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton(
+                        style: ButtonStyle(
+                          overlayColor: WidgetStateProperty.all(Colors.transparent),
+                          splashFactory: NoSplash.splashFactory,
+                        ),
+                        onPressed: () => _openSubmitSheet(
+                          context,
+                          taskCategory: task.category,
+                        ),
+                        child: const Text('Выполнено'),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton(
+                      onPressed: () => context.go(AppRoutes.submissionsMine),
+                      child: const Text('Мои заявки'),
+                    ),
+                  ],
                 ],
               ),
             ),

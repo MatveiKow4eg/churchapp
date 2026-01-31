@@ -14,13 +14,23 @@ async function listTasks({
   activeOnly = true,
   category,
   limit = 30,
-  offset = 0
+  offset = 0,
+  userId
 }) {
   return prisma.task.findMany({
     where: {
       churchId,
       ...(activeOnly ? { isActive: true } : {}),
       ...(category ? { category } : {})
+    },
+    include: {
+      quiz: true,
+      quizAttempts: userId
+          ? {
+              where: { userId },
+              select: { id: true }
+            }
+          : false
     },
     orderBy: { createdAt: 'desc' },
     take: limit,

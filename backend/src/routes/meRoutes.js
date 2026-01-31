@@ -69,11 +69,17 @@ meRouter.get('/xp', requireAuth, async (req, res, next) => {
 
     // Quiz XP is tracked in XpLedger category=QUIZ.
     // We keep it separate from the legacy per-category fields stored on User.
-    const quizAgg = await prisma.xpLedger.aggregate({
-      where: { userId, category: 'QUIZ' },
-      _sum: { xpGranted: true }
-    });
-    const quizXp = quizAgg._sum.xpGranted ?? 0;
+    // If DB migration for enum values is not applied yet, Prisma will throw.
+    let quizXp = 0;
+    try {
+      const quizAgg = await prisma.xpLedger.aggregate({
+        where: { userId, category: 'QUIZ' },
+        _sum: { xpGranted: true }
+      });
+      quizXp = quizAgg._sum.xpGranted ?? 0;
+    } catch (_) {
+      quizXp = 0;
+    }
 
     const nextLevelXp = getNextLevelXp(user.level);
     const progress = clamp01(nextLevelXp > 0 ? user.levelXp / nextLevelXp : 0);

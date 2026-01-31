@@ -85,6 +85,10 @@ async function listMine(req, res, next) {
         commentUser: s.commentUser,
         commentAdmin: s.commentAdmin,
         rewardPointsApplied: s.rewardPointsApplied,
+        // Snapshot fields (used when task is deleted and s.task is null)
+        taskTitle: s.taskTitle,
+        taskCategory: s.taskCategory,
+        taskPointsReward: s.taskPointsReward,
         task: s.task
           ? {
               id: s.task.id,

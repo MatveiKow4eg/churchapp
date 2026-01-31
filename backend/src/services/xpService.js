@@ -179,6 +179,11 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
     const xpField = getXpFieldByCategory(category);
     const lifetimeField = getLifetimeXpFieldByCategory(category);
 
+    // IMPORTANT: some Prisma clients can get out of sync with DB after manual migrations.
+    // Ensure we always increment quiz fields when category=QUIZ, even if dynamic update
+    // is ignored due to an outdated generated client.
+    const isQuiz = category === 'QUIZ';
+
     const incTotal = awardedXp + streakAwarded;
 
     // We compute the would-be new levelXp here so we can decide about level-up.
@@ -190,6 +195,8 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
       lifetimeXp: { increment: incTotal },
       [xpField]: { increment: awardedXp },
       [lifetimeField]: { increment: awardedXp },
+      // Redundant explicit mapping for QUIZ to avoid silent no-op if client schema is stale.
+      ...(isQuiz ? { xpQuiz: { increment: awardedXp }, lifetimeXpQuiz: { increment: awardedXp } } : {}),
       streakDays: newStreakDays,
       lastTaskCompletedAt: atDate
     };

@@ -54,7 +54,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
               return _TaskCard(
                 title: t.title,
                 description: stripBibleRefsFromDescription(t.description),
-                category: localizeTaskCategory(t.category),
+                categoryCode: t.category,
+                categoryLabel: localizeTaskCategory(t.category),
                 pointsReward: t.pointsReward,
                 quizMaxAttempts: t.quiz?.maxAttempts,
                 quizAttemptsUsed: t.quiz?.attemptsUsed,
@@ -130,23 +131,25 @@ class _AvatarLeading extends ConsumerWidget {
 
 
 class _TaskCard extends StatelessWidget {
-const _TaskCard({
-required this.title,
-required this.description,
-required this.category,
-required this.pointsReward,
-required this.onDetails,
-this.quizMaxAttempts,
-this.quizAttemptsUsed,
-});
+  const _TaskCard({
+    required this.title,
+    required this.description,
+    required this.categoryCode,
+    required this.categoryLabel,
+    required this.pointsReward,
+    required this.onDetails,
+    this.quizMaxAttempts,
+    this.quizAttemptsUsed,
+  });
 
-final String title;
-final String description;
-final String category;
-final int pointsReward;
-final VoidCallback onDetails;
-final int? quizMaxAttempts;
-final int? quizAttemptsUsed;
+  final String title;
+  final String description;
+  final String categoryCode;
+  final String categoryLabel;
+  final int pointsReward;
+  final VoidCallback onDetails;
+  final int? quizMaxAttempts;
+  final int? quizAttemptsUsed;
 
   @override
   Widget build(BuildContext context) {
@@ -194,20 +197,31 @@ final int? quizAttemptsUsed;
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _Badge(text: category.isEmpty ? 'Без категории' : category),
-                  if (category.trim().toUpperCase() == 'QUIZ') ...[
-                    const SizedBox(width: 8),
-                    _Badge(
-                      text: () {
+                  _Badge(
+                    text: categoryLabel.isEmpty ? 'Без категории' : categoryLabel,
+                  ),
+                  const Spacer(),
+                  if (categoryCode.trim().toUpperCase() == 'QUIZ') ...[
+                    Builder(
+                      builder: (context) {
                         final max = quizMaxAttempts;
-                        if (max == null) return 'Попыток: ∞';
+                        // If unlimited, show nothing.
+                        if (max == null) return const SizedBox.shrink();
+
                         final used = (quizAttemptsUsed ?? 0).clamp(0, max);
                         final left = (max - used).clamp(0, max);
-                        return 'Попыток осталось: $left/$max';
-                      }(),
+
+                        return Text(
+                          '$left/$max',
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        );
+                      },
                     ),
+                    const SizedBox(width: 8),
                   ],
-                  const Spacer(),
                   TextButton(
                     onPressed: onDetails,
                     child: const Text('Подробнее'),

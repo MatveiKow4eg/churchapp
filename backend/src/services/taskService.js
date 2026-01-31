@@ -253,6 +253,44 @@ async function startQuizAttempt({ userId, taskId }) {
   if (task.quiz.maxAttempts && task.quiz.maxAttempts > 0) {
     const attemptsCount = await prisma.quizAttempt.count({ where: { taskId, userId } });
     if (attemptsCount >= task.quiz.maxAttempts) {
+      // Авто-отклонение: если попытки закончились и викторина так и не была сдана,
+      // фиксируем это через Submission со статусом REJECTED, чтобы она появилась
+      // в "Мои заявки" -> "Отклонено".
+      //
+      // Важно: если уже ��сть APPROVED — ничего не меняем.
+      await prisma.$transaction(async (tx) => {
+        const approved = await tx.submission.findFirst({
+          where: { userId, taskId, status: 'APPROVED' },
+          select: { id: true }
+        });
+
+        if (!approved) {
+          // Если уже есть REJECTED — просто обновим decidedAt (на случай старых записей).
+          const existingRejected = await tx.submission.findFirst({
+            where: { userId, taskId, status: 'REJECTED' },
+            select: { id: true }
+          });
+
+          if (existingRejected) {
+            await tx.submission.update({
+              where: { id: existingRejected.id },
+              data: { decidedAt: new Date() }
+            });
+          } else {
+            await tx.submission.create({
+              data: {
+                churchId: task.churchId,
+                userId,
+                taskId,
+                status: 'REJECTED',
+                decidedAt: new Date(),
+                commentAdmin: 'MAX_ATTEMPTS_REACHED'
+              }
+            });
+          }
+        }
+      });
+
       throw new HttpError(403, 'MAX_ATTEMPTS_REACHED', 'Max attempts reached');
     }
   }

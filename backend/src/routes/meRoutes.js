@@ -57,6 +57,7 @@ meRouter.get('/xp', requireAuth, async (req, res, next) => {
         xpCommunity: true,
         xpCreativity: true,
         xpReflection: true,
+        xpQuiz: true,
         xpOther: true,
         streakDays: true,
         lastTaskCompletedAt: true
@@ -96,7 +97,7 @@ meRouter.get('/xp', requireAuth, async (req, res, next) => {
         community: user.xpCommunity,
         creativity: user.xpCreativity,
         reflection: user.xpReflection,
-        quiz: quizXp,
+        quiz: user.xpQuiz,
         other: user.xpOther
       },
       streakDays: user.streakDays,

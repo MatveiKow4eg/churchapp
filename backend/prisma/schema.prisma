@@ -140,6 +140,7 @@ model User {
   xpCommunity         Int      @default(0)
   xpCreativity        Int      @default(0)
   xpReflection        Int      @default(0)
+  xpQuiz              Int      @default(0)
   xpOther             Int      @default(0)
 
   // Streak tracking (hidden bonus logic)
@@ -153,6 +154,7 @@ model User {
   lifetimeXpCommunity Int      @default(0)
   lifetimeXpCreativity Int     @default(0)
   lifetimeXpReflection Int     @default(0)
+  lifetimeXpQuiz      Int      @default(0)
   lifetimeXpOther     Int      @default(0)
 
   xpLedger XpLedger[]

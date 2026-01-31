@@ -31,8 +31,7 @@ function getXpFieldByCategory(category) {
     case 'REFLECTION':
       return 'xpReflection';
     case 'QUIZ':
-      // Currently stored under "Other" bucket in User model.
-      return 'xpOther';
+      return 'xpQuiz';
     case 'OTHER':
       return 'xpOther';
     default:
@@ -53,8 +52,7 @@ function getLifetimeXpFieldByCategory(category) {
     case 'REFLECTION':
       return 'lifetimeXpReflection';
     case 'QUIZ':
-      // Currently stored under "Other" bucket in User model.
-      return 'lifetimeXpOther';
+      return 'lifetimeXpQuiz';
     case 'OTHER':
       return 'lifetimeXpOther';
     default:
@@ -218,6 +216,7 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
       updateData.xpCommunity = 0;
       updateData.xpCreativity = 0;
       updateData.xpReflection = 0;
+      updateData.xpQuiz = 0;
       updateData.xpOther = 0;
     }
 

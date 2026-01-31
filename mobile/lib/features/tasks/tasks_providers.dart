@@ -47,12 +47,16 @@ class TasksListNotifier extends AutoDisposeAsyncNotifier<List<TaskModel>> {
     final tasks = results[0] as List<TaskModel>;
     final submissions = results[1] as List<SubmissionModel>;
 
-    // Hide tasks that are already submitted or completed.
-    // - PENDING: moved to "My submissions" until decision.
-    // - APPROVED: completed, should not be shown in active tasks.
-    // - REJECTED: task should be available again.
+    // Hide tasks that are already submitted or decided.
+    //
+    // Important for QUIZ: when attempts are exhausted, backend auto-creates
+    // a REJECTED submission ("My submissions" -> "Rejected").
+    // In this case the task must not remain in the active tasks list.
     final hiddenTaskIds = submissions
-        .where((s) => s.status == 'PENDING' || s.status == 'APPROVED')
+        .where((s) =>
+            s.status == 'PENDING' ||
+            s.status == 'APPROVED' ||
+            s.status == 'REJECTED')
         .map((s) => s.task?.id)
         .whereType<String>()
         .where((id) => id.isNotEmpty)

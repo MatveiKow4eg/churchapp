@@ -7,6 +7,7 @@ import '../tasks_providers.dart';
 import '../../../app/router.dart';
 import '../../../core/errors/app_error.dart';
 import '../../auth/user_session_provider.dart';
+import '../../submissions/my_submissions_providers.dart';
 
 class QuizRunScreen extends ConsumerStatefulWidget {
   const QuizRunScreen({super.key, required this.task, required this.attemptId});
@@ -114,9 +115,21 @@ class _QuizRunScreenState extends ConsumerState<QuizRunScreen> {
 
       if (!mounted) return;
       if (isPassed) {
+        // Викторина пройдена: награда/APPROVED создаются на сервере.
+        // Обновим списки, чтобы задача сразу пропала из "Задания".
+        ref.invalidate(tasksListProvider);
+        ref.invalidate(mySubmissionsListProvider);
+
         // Уходим к списку заданий
         context.go(AppRoutes.tasks);
       } else {
+        // Викторина не пройдена: если это была последняя попытка,
+        // сервер мог автоматически создать REJECTED submission.
+        // Обновим списки, что��ы она сразу появилась в "Мои заявки -> Отклонено",
+        // без перезапуска приложения.
+        ref.invalidate(tasksListProvider);
+        ref.invalidate(mySubmissionsListProvider);
+
         // Возвращаемся к деталям задания
         if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop();

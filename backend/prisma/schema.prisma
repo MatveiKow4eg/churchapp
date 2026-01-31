@@ -35,12 +35,14 @@ enum XpCategory {
   COMMUNITY
   CREATIVITY
   REFLECTION
+  QUIZ
   OTHER
 }
 
 
 enum XpSource {
   TASK
+  QUIZ
   STREAK
 }
 

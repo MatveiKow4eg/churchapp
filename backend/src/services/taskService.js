@@ -487,6 +487,18 @@ async function submitQuizAttempt({ userId, taskId, attemptId, answers }) {
             meta: { taskId, submissionId: submission.id }
           }
         });
+
+        // Award XP for quiz completion as well (fixed amount, once per auto-approved submission)
+        // Re-using the same XP awarding flow as regular tasks.
+        if (!submission.xpAppliedAt) {
+          const { awardTaskXp } = require('./xpService');
+          await awardTaskXp({ userId, taskId, at: new Date(), tx });
+
+          await tx.submission.update({
+            where: { id: submission.id },
+            data: { xpAppliedAt: new Date() }
+          });
+        }
       }
     }
 

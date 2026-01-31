@@ -26,6 +26,11 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
   final _descCtrl = TextEditingController();
   final _pointsCtrl = TextEditingController();
 
+  // QUIZ controls (only used when category == QUIZ)
+  final _quizPassScoreCtrl = TextEditingController();
+  final _quizMaxAttemptsCtrl = TextEditingController();
+  bool _quizShuffle = false;
+
   String _category = 'OTHER';
   bool _saving = false;
   bool _loadedOnce = false;
@@ -46,6 +51,8 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
     _titleCtrl.dispose();
     _descCtrl.dispose();
     _pointsCtrl.dispose();
+    _quizPassScoreCtrl.dispose();
+    _quizMaxAttemptsCtrl.dispose();
     super.dispose();
   }
 
@@ -56,6 +63,11 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
     final cat = t.category.trim();
     _category = _categories.contains(cat) ? cat : 'OTHER';
     _isActive = t.isActive;
+
+    final quiz = t.quiz;
+    _quizPassScoreCtrl.text = (quiz?.passScore ?? 70).toString();
+    _quizMaxAttemptsCtrl.text = (quiz?.maxAttempts ?? '').toString();
+    _quizShuffle = quiz?.shuffleQuestions ?? false;
   }
 
   String? _validateTitle(String? v) {
@@ -68,7 +80,8 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
 
   String? _validateDesc(String? v) {
     final s = (v ?? '').trim();
-    if (s.isEmpty) return 'Введите описание';
+    // Description is optional.
+    if (s.isEmpty) return null;
     if (s.length < 10) return 'Минимум 10 символов';
     if (s.length > 2000) return 'Максимум 2000 символов';
     return null;
@@ -80,6 +93,25 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
     if (n == null) return 'Введите число';
     if (n < 1) return 'Минимум 1';
     if (n > 10000) return 'Максимум 10000';
+    return null;
+  }
+
+  String? _validatePassScore(String? v) {
+    final s = (v ?? '').trim();
+    final n = int.tryParse(s);
+    if (n == null) return 'Введите число';
+    if (n < 0) return 'Минимум 0';
+    if (n > 100) return 'Максимум 100';
+    return null;
+  }
+
+  String? _validateMaxAttempts(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return null; // unlimited
+    final n = int.tryParse(s);
+    if (n == null) return 'Введите число';
+    if (n < 1) return 'Минимум 1';
+    if (n > 1000) return 'Максимум 1000';
     return null;
   }
 
@@ -100,7 +132,20 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
         'isActive': _isActive,
       };
 
-      await repo.updateTask(widget.taskId, patch: patch);
+      Map<String, dynamic>? quizPatch;
+      if (_category == 'QUIZ') {
+        final passScore = int.parse(_quizPassScoreCtrl.text.trim());
+        final maxAttemptsStr = _quizMaxAttemptsCtrl.text.trim();
+        final maxAttempts = maxAttemptsStr.isEmpty ? null : int.parse(maxAttemptsStr);
+
+        quizPatch = {
+          'shuffleQuestions': _quizShuffle,
+          'maxAttempts': maxAttempts,
+          'passScore': passScore,
+        };
+      }
+
+      await repo.updateTask(widget.taskId, patch: patch, quiz: quizPatch);
 
       await ref.read(adminTasksListProvider.notifier).refresh();
       ref.invalidate(adminTaskByIdProvider(widget.taskId));
@@ -217,6 +262,53 @@ class _EditTaskScreenState extends ConsumerState<EditTaskScreen> {
                     ),
                     validator: _validatePoints,
                   ),
+                  if (_category == 'QUIZ') ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Настройки викторины',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _quizPassScoreCtrl,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Проходной балл (0-100)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: _validatePassScore,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _quizMaxAttemptsCtrl,
+                      enabled: !_saving,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Макс. попыток (пусто = без лимита)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: _validateMaxAttempts,
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      value: _quizShuffle,
+                      onChanged: _saving
+                          ? null
+                          : (v) => setState(() => _quizShuffle = v),
+                      title: const Text('Перемешивать вопросы'),
+                    ),
+                    Text(
+                      'Редактирование вопросов викторины в этом экране пока не доступно.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   FilledButton(
                     onPressed: _saving ? null : _save,

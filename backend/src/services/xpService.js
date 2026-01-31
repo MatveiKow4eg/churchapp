@@ -30,6 +30,9 @@ function getXpFieldByCategory(category) {
       return 'xpCreativity';
     case 'REFLECTION':
       return 'xpReflection';
+    case 'QUIZ':
+      // Currently stored under "Other" bucket in User model.
+      return 'xpOther';
     case 'OTHER':
       return 'xpOther';
     default:
@@ -49,6 +52,9 @@ function getLifetimeXpFieldByCategory(category) {
       return 'lifetimeXpCreativity';
     case 'REFLECTION':
       return 'lifetimeXpReflection';
+    case 'QUIZ':
+      // Currently stored under "Other" bucket in User model.
+      return 'lifetimeXpOther';
     case 'OTHER':
       return 'lifetimeXpOther';
     default:
@@ -70,6 +76,8 @@ function mapTaskCategoryToXpCategory(taskCategory) {
       return 'CREATIVITY';
     case 'REFLECTION':
       return 'REFLECTION';
+    case 'QUIZ':
+      return 'QUIZ';
     case 'OTHER':
     default:
       return 'OTHER';
@@ -80,6 +88,8 @@ function mapTaskCategoryToXpCategory(taskCategory) {
  * Awards XP for a task completion.
  * Pure DB operation: calculates daily soft-cap + streak bonus and writes XpLedger + updates User in a single transaction.
  */
+const QUIZ_FIXED_XP = 25;
+
 async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
   if (!userId) throw new Error('userId is required');
   if (!taskId) throw new Error('taskId is required');
@@ -97,8 +107,10 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
 
     // B) Base XP
     // Difficulty is fixed: admins/users cannot tune XP difficulty per task.
-    const difficulty = 'M';
-    const baseXp = getBaseXpByDifficulty(difficulty);
+    // For QUIZ tasks we use a fixed XP amount.
+    const baseXp = task.category === 'QUIZ'
+      ? QUIZ_FIXED_XP
+      : getBaseXpByDifficulty('M');
 
     // XP category is derived from task.category.
     const category = mapTaskCategoryToXpCategory(task.category);
@@ -140,7 +152,7 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
         xpGranted: awardedXp,
         xpBase: baseXp,
         category,
-        source: 'TASK',
+        source: task.category === 'QUIZ' ? 'QUIZ' : 'TASK',
         createdAt: atDate
       }
     });

@@ -34,6 +34,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'APPROVED',
+        // Count should NOT depend on Task existence: keep history even if Task is deleted.
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
@@ -41,6 +42,7 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       where: {
         userId,
         status: 'REJECTED',
+        // Count should NOT depend on Task existence: keep history even if Task is deleted.
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       }
     }),
@@ -57,11 +59,14 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
       _sum: { amount: true }
     }),
     // top 3 categories for approved tasks in the month
+    // IMPORTANT: if the task was deleted later, taskId may be NULL (onDelete: SetNull).
+    // Exclude NULL taskId from category aggregation.
     prisma.submission.groupBy({
       by: ['taskId'],
       where: {
         userId,
         status: 'APPROVED',
+        taskId: { not: null },
         ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
       },
       _count: { taskId: true }

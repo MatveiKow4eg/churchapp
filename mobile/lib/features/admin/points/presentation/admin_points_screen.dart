@@ -185,119 +185,121 @@ class _UserPointsSheetState extends ConsumerState<_UserPointsSheet> {
           constraints: BoxConstraints(
             maxHeight: MediaQuery.of(context).size.height * 0.85,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                name.isNotEmpty ? name : 'Пользователь',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              pointsAsync.when(
-                data: (dto) {
-                  final balance = dto?.balance ?? 0;
-                  return Text(
-                    'Текущие очки: $balance',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: LinearProgressIndicator(),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  name.isNotEmpty ? name : 'Пользователь',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                error: (e, _) => Text('Ошибка: $e'),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _amountCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Количество (целое число)',
-                  hintText: 'Например: 10',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _reasonCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Причина',
-                  hintText: 'Например: вручную / штраф / поощрение',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.remove),
-                      label: const Text('Вычесть'),
-                      onPressed: _saving
-                          ? null
-                          : () async {
-                              final amount = int.tryParse(_amountCtrl.text.trim());
-                              if (amount == null || amount <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Введите положительное целое число')),
-                                );
-                                return;
-                              }
-
-                              final reason = _reasonCtrl.text.trim();
-                              if (reason.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Укажите причину')),
-                                );
-                                return;
-                              }
-
-                              await _adjust(context, -amount, reason);
-                            },
-                    ),
+                const SizedBox(height: 8),
+                pointsAsync.when(
+                  data: (dto) {
+                    final balance = dto?.balance ?? 0;
+                    return Text(
+                      'Текущие очки: $balance',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text('Начислить'),
-                      onPressed: _saving
-                          ? null
-                          : () async {
-                              final amount = int.tryParse(_amountCtrl.text.trim());
-                              if (amount == null || amount <= 0) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Введите положительное целое число')),
-                                );
-                                return;
-                              }
-
-                              final reason = _reasonCtrl.text.trim();
-                              if (reason.isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Укажите причину')),
-                                );
-                                return;
-                              }
-
-                              await _adjust(context, amount, reason);
-                            },
-                    ),
+                  error: (e, _) => Text('Ошибка: $e'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Количество (целое число)',
+                    hintText: 'Например: 10',
+                    border: OutlineInputBorder(),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _LedgerBlock(userId: widget.user.id),
-              const Spacer(),
-              Text(
-                'Примечание: ручные изменения пишутся в ledger как ADMIN_ADJUSTMENT (аудит).',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _reasonCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Причина',
+                    hintText: 'Например: вручную / штраф / поощрение',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.remove),
+                        label: const Text('Вычесть'),
+                        onPressed: _saving
+                            ? null
+                            : () async {
+                                final amount = int.tryParse(_amountCtrl.text.trim());
+                                if (amount == null || amount <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Введите положительное целое число')),
+                                  );
+                                  return;
+                                }
+
+                                final reason = _reasonCtrl.text.trim();
+                                if (reason.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Укажите причину')),
+                                  );
+                                  return;
+                                }
+
+                                await _adjust(context, -amount, reason);
+                              },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('Начислить'),
+                        onPressed: _saving
+                            ? null
+                            : () async {
+                                final amount = int.tryParse(_amountCtrl.text.trim());
+                                if (amount == null || amount <= 0) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Введите положительное целое число')),
+                                  );
+                                  return;
+                                }
+
+                                final reason = _reasonCtrl.text.trim();
+                                if (reason.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Укажите причину')),
+                                  );
+                                  return;
+                                }
+
+                                await _adjust(context, amount, reason);
+                              },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _LedgerBlock(userId: widget.user.id),
+                const SizedBox(height: 18),
+                Text(
+                  'Примечание: ручные изменения пишутся в ledger как ADMIN_ADJUSTMENT (аудит).',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
         ),
       ),

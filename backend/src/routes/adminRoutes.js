@@ -5,6 +5,8 @@ const { requireAuth } = require('../middleware/authMiddleware');
 const { requireAdmin } = require('../middleware/roleMiddleware');
 const { validate } = require('../middleware/validate');
 const { createChurchSchema } = require('../validators/churchSchemas');
+const { adminAdjustSchema } = require('../validators/pointsSchemas');
+const pointsService = require('../services/pointsService');
 
 const { prisma } = require('../db/prisma');
 const { createChurch } = require('../services/churchService');
@@ -195,6 +197,8 @@ router.delete('/churches/:id', async (req, res, next) => {
 
 // GET /admin/users
 // Access: SUPERADMIN/DEVELOPER
+// GET /admin/users
+// Access: SUPERADMIN/DEVELOPER
 router.get('/users', async (req, res, next) => {
   try {
     const items = await prisma.user.findMany({
@@ -215,6 +219,102 @@ router.get('/users', async (req, res, next) => {
     });
 
     return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /admin/users/church
+// Access: ADMIN+ (scoped by req.user.churchId)
+router.get('/users/church', async (req, res, next) => {
+  try {
+    const churchId = req.user?.churchId;
+
+    if (!churchId) {
+      return res.status(409).json({ error: { code: 'NO_CHURCH', message: 'User has no church selected' } });
+    }
+
+    const items = await prisma.user.findMany({
+      where: {
+        churchId,
+        status: 'ACTIVE'
+      },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        avatarUpdatedAt: true,
+        avatarConfig: true
+      }
+    });
+
+    return res.json({ items });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// GET /admin/users/:id/points
+// Access: ADMIN+ (user must be in the same church)
+router.get('/users/:id/points', async (req, res, next) => {
+  try {
+    const churchId = req.user?.churchId;
+    if (!churchId) {
+      return res.status(409).json({ error: { code: 'NO_CHURCH', message: 'User has no church selected' } });
+    }
+
+    const userId = req.params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, churchId: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
+    }
+
+    if (user.churchId !== churchId) {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+    }
+
+    const balance = await pointsService.getBalance(userId, churchId);
+
+    return res.json({ userId, churchId, balance });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// POST /admin/points/adjust
+// Access: ADMIN+ (scoped by req.user.churchId)
+// Body: { userId, amount (int, can be negative), reason }
+router.post('/points/adjust', validate({ body: adminAdjustSchema }), async (req, res, next) => {
+  try {
+    const actorId = req.user?.id;
+    const churchId = req.user?.churchId;
+
+    if (!churchId) {
+      return res.status(409).json({ error: { code: 'NO_CHURCH', message: 'User has no church selected' } });
+    }
+
+    const { userId, amount, reason } = req.body;
+
+    await pointsService.addEntry({
+      churchId,
+      userId,
+      type: 'ADMIN_ADJUST',
+      amount,
+      meta: {
+        reason,
+        actorId
+      }
+    });
+
+    const balance = await pointsService.getBalance(userId, churchId);
+
+    return res.status(201).json({ ok: true, userId, balance });
   } catch (err) {
     return next(err);
   }

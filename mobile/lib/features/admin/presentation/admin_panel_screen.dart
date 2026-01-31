@@ -94,6 +94,18 @@ class AdminPanelScreen extends ConsumerWidget {
           ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             minVerticalPadding: 18,
+            leading: const Icon(Icons.stars_outlined, size: 26),
+            title: const Text(
+              'Очки',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 26),
+            onTap: () => context.go(AppRoutes.adminPoints),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            minVerticalPadding: 18,
             leading: const Icon(Icons.storefront_outlined, size: 26),
             title: const Text(
               'Предметы магазина',

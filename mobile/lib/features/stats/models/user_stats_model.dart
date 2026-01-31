@@ -22,26 +22,20 @@ class UserStatsModel {
   factory UserStatsModel.fromJson(Map<String, dynamic> json) {
     final rawTop = json['topCategories'];
 
+    int readInt(dynamic v) {
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v.trim()) ?? 0;
+      return 0;
+    }
+
     return UserStatsModel(
       month: (json['month'] ?? '').toString(),
-      tasksApprovedCount: (json['tasksApprovedCount'] is num)
-          ? (json['tasksApprovedCount'] as num).toInt()
-          : int.tryParse((json['tasksApprovedCount'] ?? '0').toString()) ?? 0,
-      tasksRejectedCount: (json['tasksRejectedCount'] is num)
-          ? (json['tasksRejectedCount'] as num).toInt()
-          : int.tryParse((json['tasksRejectedCount'] ?? '0').toString()) ?? 0,
-      pointsEarned: (json['pointsEarned'] is num)
-          ? (json['pointsEarned'] as num).toInt()
-          : int.tryParse((json['pointsEarned'] ?? '0').toString()) ?? 0,
-      pointsSpent: (json['pointsSpent'] is num)
-          ? (json['pointsSpent'] as num).toInt()
-          : int.tryParse((json['pointsSpent'] ?? '0').toString()) ?? 0,
-      netPoints: (json['netPoints'] is num)
-          ? (json['netPoints'] as num).toInt()
-          : int.tryParse((json['netPoints'] ?? '0').toString()) ?? 0,
-      currentBalance: (json['currentBalance'] is num)
-          ? (json['currentBalance'] as num).toInt()
-          : int.tryParse((json['currentBalance'] ?? '0').toString()) ?? 0,
+      tasksApprovedCount: readInt(json['tasksApprovedCount']),
+      tasksRejectedCount: readInt(json['tasksRejectedCount']),
+      pointsEarned: readInt(json['pointsEarned']),
+      pointsSpent: readInt(json['pointsSpent']),
+      netPoints: readInt(json['netPoints']),
+      currentBalance: readInt(json['currentBalance']),
       topCategories: rawTop is List
           ? rawTop
               .whereType<Map>()

@@ -22,6 +22,13 @@ class XpStatus {
   factory XpStatus.fromJson(Map<String, dynamic> json) {
     final rawCategories = (json['categories'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
 
+    int readCat(String key) {
+      final v = rawCategories[key];
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v.trim()) ?? 0;
+      return 0;
+    }
+
     DateTime? parsedLast;
     final rawLast = json['lastTaskCompletedAt'];
     if (rawLast is String && rawLast.isNotEmpty) {
@@ -35,12 +42,13 @@ class XpStatus {
       nextLevelXp: (json['nextLevelXp'] as num).toInt(),
       progress: (json['progress'] as num).toDouble(),
       categories: {
-        'spiritual': (rawCategories['spiritual'] as num?)?.toInt() ?? 0,
-        'service': (rawCategories['service'] as num?)?.toInt() ?? 0,
-        'community': (rawCategories['community'] as num?)?.toInt() ?? 0,
-        'creativity': (rawCategories['creativity'] as num?)?.toInt() ?? 0,
-        'reflection': (rawCategories['reflection'] as num?)?.toInt() ?? 0,
-        'other': (rawCategories['other'] as num?)?.toInt() ?? 0,
+        'spiritual': readCat('spiritual'),
+        'service': readCat('service'),
+        'community': readCat('community'),
+        'creativity': readCat('creativity'),
+        'reflection': readCat('reflection'),
+        'quiz': readCat('quiz'),
+        'other': readCat('other'),
       },
       streakDays: (json['streakDays'] as num?)?.toInt() ?? 0,
       lastTaskCompletedAt: parsedLast,

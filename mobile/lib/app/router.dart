@@ -11,6 +11,7 @@ import '../features/admin/presentation/pending_submissions_screen.dart';
 import '../features/admin/tasks/admin_tasks_screen.dart';
 import '../features/admin/tasks/create_task_screen.dart';
 import '../features/admin/tasks/edit_task_screen.dart';
+import '../features/admin/points/presentation/admin_points_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/auth/session_providers.dart';
@@ -261,6 +262,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   ),
                 ],
               ),
+              // Admin points (manual adjustments)
+              GoRoute(
+                path: 'points',
+                builder: (context, state) => const AdminPointsScreen(),
+              ),
               // Superadmin panel under /admin so it stays inside the shell.
               GoRoute(
                 path: 'church-stats',
@@ -388,7 +394,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       appBar: AppBar(title: const Text('Route not found')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Text(state.error?.toString() ?? 'Unknown routing error'),
+        child: Text(
+          'uri: ${state.uri}\n'
+          'matchedLocation: ${state.matchedLocation}\n'
+          'error: ${state.error?.toString() ?? 'Unknown routing error'}',
+        ),
       ),
     ),
   );
@@ -435,6 +445,7 @@ abstract final class AppRoutes {
 
   static const adminPending = '/admin/pending';
   static const adminTasks = '/admin/tasks';
+  static const adminPoints = '/admin/points';
   static const adminChurchStats = '/admin/church-stats';
 
   // Reports

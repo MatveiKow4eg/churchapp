@@ -1,3 +1,9 @@
+int _readInt(dynamic v) {
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v.trim()) ?? 0;
+  return 0;
+}
+
 class ChurchStatsModel {
   ChurchStatsModel({
     required this.month,
@@ -37,15 +43,13 @@ class ChurchStatsModel {
 
     return ChurchStatsModel(
       month: (json['month'] ?? '').toString(),
-      activeUsersCount: (json['activeUsersCount'] as num?)?.toInt() ?? 0,
-      onlineUsersCount: (json['onlineUsersCount'] as num?)?.toInt() ?? 0,
-      totalMembersCount: (json['totalMembersCount'] as num?)?.toInt() ?? 0,
-      approvedSubmissionsCount:
-          (json['approvedSubmissionsCount'] as num?)?.toInt() ?? 0,
-      pendingSubmissionsCount:
-          (json['pendingSubmissionsCount'] as num?)?.toInt() ?? 0,
-      totalPointsEarned: (json['totalPointsEarned'] as num?)?.toInt() ?? 0,
-      totalPointsSpent: (json['totalPointsSpent'] as num?)?.toInt() ?? 0,
+      activeUsersCount: _readInt(json['activeUsersCount']),
+      onlineUsersCount: _readInt(json['onlineUsersCount']),
+      totalMembersCount: _readInt(json['totalMembersCount']),
+      approvedSubmissionsCount: _readInt(json['approvedSubmissionsCount']),
+      pendingSubmissionsCount: _readInt(json['pendingSubmissionsCount']),
+      totalPointsEarned: _readInt(json['totalPointsEarned']),
+      totalPointsSpent: _readInt(json['totalPointsSpent']),
       topUsers: (topUsersRaw is List)
           ? topUsersRaw
               .whereType<Map>()
@@ -140,7 +144,7 @@ class ChurchTopUser {
               userAny.map((k, v) => MapEntry(k.toString(), v)),
             )
           : const ChurchUserShort(id: '', firstName: '', lastName: ''),
-      netPoints: (json['netPoints'] as num?)?.toInt() ?? 0,
+      netPoints: _readInt(json['netPoints']),
     );
   }
 }
@@ -159,7 +163,7 @@ class ChurchTopTask {
               taskAny.map((k, v) => MapEntry(k.toString(), v)),
             )
           : const ChurchTaskShort(id: '', title: ''),
-      approvedCount: (json['approvedCount'] as num?)?.toInt() ?? 0,
+      approvedCount: _readInt(json['approvedCount']),
     );
   }
 }
@@ -214,7 +218,7 @@ class ChurchTopCategory {
   factory ChurchTopCategory.fromJson(Map<String, dynamic> json) {
     return ChurchTopCategory(
       category: (json['category'] ?? '').toString(),
-      approvedCount: (json['approvedCount'] as num?)?.toInt() ?? 0,
+      approvedCount: _readInt(json['approvedCount']),
     );
   }
 }

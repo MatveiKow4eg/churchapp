@@ -258,16 +258,11 @@ async function deleteTask(taskId) {
     });
 
     if (task) {
-      // Populate snapshot only if it's missing, so we don't overwrite historical values.
+      // Always write snapshot right before deletion.
+      // This guarantees the user still sees task text/category/points in submissions history
+      // even if the task is deleted and taskId becomes NULL.
       await tx.submission.updateMany({
-        where: {
-          taskId,
-          OR: [
-            { taskTitle: null },
-            { taskCategory: null },
-            { taskPointsReward: null }
-          ]
-        },
+        where: { taskId },
         data: {
           taskTitle: task.title,
           taskCategory: task.category,

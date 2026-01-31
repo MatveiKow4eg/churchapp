@@ -25,6 +25,22 @@ const crypto = require('crypto');
 
 const app = express();
 
+// Disable ETag to prevent 304 caching for dynamic JSON endpoints.
+// This avoids stale data in mobile app (e.g., submissions/stats after task deletion).
+app.set('etag', false);
+
+// Explicitly disable caching for dynamic API responses.
+app.use((req, res, next) => {
+  // Keep /bible public proxy cache behavior unchanged (if any intermediaries cache it).
+  if (req.path.startsWith('/bible')) return next();
+
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 // Request id (propagate from client if provided)
 app.use((req, res, next) => {
   const headerRid = req.headers['x-request-id'];

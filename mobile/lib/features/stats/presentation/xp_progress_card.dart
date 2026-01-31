@@ -85,6 +85,7 @@ class XpProgressCard extends ConsumerWidget {
               ('community', 'Сообщество', Icons.groups_outlined),
               ('creativity', 'Творчество', Icons.brush_outlined),
               ('reflection', 'Рассуждение', Icons.psychology_alt_outlined),
+              ('quiz', 'Викторина', Icons.quiz_outlined),
               ('other', 'Другое', Icons.more_horiz),
             ];
 

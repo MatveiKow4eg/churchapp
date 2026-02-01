@@ -33,8 +33,7 @@ class ChurchStatsModel {
   final List<ChurchTopCategory> topCategories;
   final List<ChurchMember> members;
 
-  int get netPoints => totalPointsEarned - totalPointsSpent;
-
+  
   factory ChurchStatsModel.fromJson(Map<String, dynamic> json) {
     final topUsersRaw = json['topUsers'];
     final topTasksRaw = json['topTasks'];
@@ -131,20 +130,37 @@ class ChurchMember {
 }
 
 class ChurchTopUser {
-  ChurchTopUser({required this.user, required this.netPoints});
+  ChurchTopUser({
+    required this.user,
+    required this.tasksApprovedCount,
+    required this.tasksRejectedCount,
+    required this.approvalRate,
+  });
 
   final ChurchUserShort user;
-  final int netPoints;
+  final int tasksApprovedCount;
+  final int tasksRejectedCount;
+  final double approvalRate;
 
   factory ChurchTopUser.fromJson(Map<String, dynamic> json) {
     final userAny = json['user'];
+
+    final approved = _readInt(json['tasksApprovedCount']);
+    final rejected = _readInt(json['tasksRejectedCount']);
+    final rateAny = json['approvalRate'];
+    final rate = (rateAny is num)
+        ? rateAny.toDouble()
+        : double.tryParse((rateAny ?? '0').toString()) ?? 0.0;
+
     return ChurchTopUser(
       user: userAny is Map
           ? ChurchUserShort.fromJson(
               userAny.map((k, v) => MapEntry(k.toString(), v)),
             )
           : const ChurchUserShort(id: '', firstName: '', lastName: ''),
-      netPoints: _readInt(json['netPoints']),
+      tasksApprovedCount: approved,
+      tasksRejectedCount: rejected,
+      approvalRate: rate,
     );
   }
 }

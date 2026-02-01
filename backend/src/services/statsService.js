@@ -128,7 +128,6 @@ async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
     tasksRejectedCount,
     pointsEarned,
     pointsSpent,
-    netPoints: pointsEarned - pointsSpent,
     currentBalance,
     topCategories
   };
@@ -145,7 +144,6 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     approvedSubmissionsCount,
     pendingSubmissionsCount,
     monthlyChurchEntries,
-    topUsersAgg,
     topTasksAgg
   ] = await prisma.$transaction([
     prisma.user.count({
@@ -185,15 +183,7 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
         amount: true
       }
     }),
-    prisma.pointsLedger.groupBy({
-      by: ['userId'],
-      where: {
-        churchId,
-        ...(start && end ? { createdAt: { gte: start, lt: end } } : {})
-      },
-      _sum: { amount: true }
-    }),
-    prisma.submission.groupBy({
+        prisma.submission.groupBy({
       by: ['taskId'],
       where: {
         churchId,
@@ -218,13 +208,52 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     else if (e.amount < 0) totalPointsSpent += Math.abs(e.amount);
   }
 
-  // top 10 users by net points (sum ledger amount within month)
-  const topUserIds = topUsersAgg
-    .slice()
-    .sort((a, b) => (b._sum.amount ?? 0) - (a._sum.amount ?? 0))
-    .slice(0, 10)
-    .map((x) => x.userId);
+  // Top users by completed tasks in the month
+  // We rank by APPROVED count, then by approval rate.
+  const topUsersAgg = await prisma.submission.groupBy({
+    by: ['userId', 'status'],
+    where: {
+      churchId,
+      status: { in: ['APPROVED', 'REJECTED'] },
+      userId: { not: null },
+      ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
+    },
+    _count: { _all: true }
+  });
 
+  const countsByUserId = new Map();
+  for (const row of topUsersAgg) {
+    const userId = row.userId;
+    if (!userId) continue;
+    const cur = countsByUserId.get(userId) ?? { approved: 0, rejected: 0 };
+    if (row.status === 'APPROVED') cur.approved += row._count._all;
+    if (row.status === 'REJECTED') cur.rejected += row._count._all;
+    countsByUserId.set(userId, cur);
+  }
+
+  const ranked = Array.from(countsByUserId.entries())
+    .map(([userId, c]) => {
+      const total = c.approved + c.rejected;
+      const approvalRate = total > 0 ? c.approved / total : 0;
+      return {
+        userId,
+        tasksApprovedCount: c.approved,
+        tasksRejectedCount: c.rejected,
+        approvalRate
+      };
+    })
+    .sort((a, b) => {
+      if (b.tasksApprovedCount !== a.tasksApprovedCount) {
+        return b.tasksApprovedCount - a.tasksApprovedCount;
+      }
+      if (b.approvalRate !== a.approvalRate) {
+        return b.approvalRate - a.approvalRate;
+      }
+      return b.tasksRejectedCount - a.tasksRejectedCount;
+    })
+    .slice(0, 5);
+
+  const topUserIds = ranked.map((r) => r.userId);
   let topUsers = [];
   if (topUserIds.length > 0) {
     const users = await prisma.user.findMany({
@@ -240,14 +269,13 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
 
     const userById = new Map(users.map((u) => [u.id, u]));
 
-    topUsers = topUsersAgg
-      .map((x) => ({ userId: x.userId, netPoints: x._sum.amount ?? 0 }))
-      .filter((x) => userById.has(x.userId))
-      .sort((a, b) => b.netPoints - a.netPoints)
-      .slice(0, 10)
-      .map((x) => ({
-        user: userById.get(x.userId),
-        netPoints: x.netPoints
+    topUsers = ranked
+      .filter((r) => userById.has(r.userId))
+      .map((r) => ({
+        user: userById.get(r.userId),
+        tasksApprovedCount: r.tasksApprovedCount,
+        tasksRejectedCount: r.tasksRejectedCount,
+        approvalRate: r.approvalRate
       }));
   }
 
@@ -351,7 +379,7 @@ async function getChurchLeaderboard({
       limit,
       offset,
       total: 0,
-      ...(includeMeUserId ? { me: { rank: null, netPoints: 0 } } : {})
+      ...(includeMeUserId ? { me: { rank: null, pointsDelta: 0 } } : {})
     };
   }
 
@@ -370,8 +398,8 @@ async function getChurchLeaderboard({
 
   // Users with 0 points in month are still part of the ranking
   const allRows = activeUserIds
-    .map((userId) => ({ userId, netPoints: netByUserId.get(userId) ?? 0 }))
-    .sort((a, b) => b.netPoints - a.netPoints);
+    .map((userId) => ({ userId, pointsDelta: netByUserId.get(userId) ?? 0 }))
+    .sort((a, b) => b.pointsDelta - a.pointsDelta);
 
   const paged = allRows.slice(offset, offset + limit);
 
@@ -380,7 +408,7 @@ async function getChurchLeaderboard({
     .map((r, idx) => ({
       rank: offset + idx + 1,
       user: userById.get(r.userId),
-      netPoints: r.netPoints
+      pointsDelta: r.pointsDelta
     }));
 
   let me;
@@ -389,11 +417,11 @@ async function getChurchLeaderboard({
     if (meIndex >= 0) {
       me = {
         rank: meIndex + 1,
-        netPoints: allRows[meIndex].netPoints
+        pointsDelta: allRows[meIndex].pointsDelta
       };
     } else {
       // current user not ACTIVE / not in this church
-      me = { rank: null, netPoints: 0 };
+      me = { rank: null, pointsDelta: 0 };
     }
   }
 

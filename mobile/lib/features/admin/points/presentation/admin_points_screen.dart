@@ -93,7 +93,29 @@ class _AdminPointsScreenState extends ConsumerState<AdminPointsScreen> {
                                 context: context,
                                 showDragHandle: true,
                                 isScrollControlled: true,
-                                builder: (_) => _UserPointsSheet(user: u),
+                                useSafeArea: true,
+                                backgroundColor: Theme.of(context).colorScheme.surface,
+                                builder: (_) => DraggableScrollableSheet(
+                                  expand: false,
+                                  initialChildSize: 0.85,
+                                  minChildSize: 0.25,
+                                  maxChildSize: 0.95,
+                                  builder: (context, scrollController) {
+                                    return Container(
+                                      decoration: const BoxDecoration(
+                                        // background provided by showModalBottomSheet
+                                        borderRadius: BorderRadius.vertical(
+                                          top: Radius.circular(16),
+                                        ),
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: SingleChildScrollView(
+                                        controller: scrollController,
+                                        child: _UserPointsSheet(user: u),
+                                      ),
+                                    );
+                                  },
+                                ),
                               );
                             },
                           );

@@ -5,7 +5,6 @@ class UserStatsModel {
     required this.tasksRejectedCount,
     required this.pointsEarned,
     required this.pointsSpent,
-    required this.netPoints,
     required this.currentBalance,
     required this.topCategories,
   });
@@ -15,7 +14,6 @@ class UserStatsModel {
   final int tasksRejectedCount;
   final int pointsEarned;
   final int pointsSpent;
-  final int netPoints;
   final int currentBalance;
   final List<UserTopCategory> topCategories;
 
@@ -34,7 +32,6 @@ class UserStatsModel {
       tasksRejectedCount: readInt(json['tasksRejectedCount']),
       pointsEarned: readInt(json['pointsEarned']),
       pointsSpent: readInt(json['pointsSpent']),
-      netPoints: readInt(json['netPoints']),
       currentBalance: readInt(json['currentBalance']),
       topCategories: rawTop is List
           ? rawTop

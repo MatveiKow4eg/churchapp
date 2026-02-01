@@ -86,7 +86,7 @@ class _ChurchStatsScreenState extends ConsumerState<ChurchStatsScreen> {
               const SizedBox(height: 16),
               if (stats.topUsers.isNotEmpty) ...[
                 Text(
-                  'Топ пользователей (net points)',
+                  'Топ пользователей (по выполненным заданиям)',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -298,8 +298,7 @@ class _StatsGrid extends StatelessWidget {
           ),
           _StatCard(title: 'Одобрено', value: '${stats.approvedSubmissionsCount}'),
           _StatCard(title: 'В очереди', value: '${stats.pendingSubmissionsCount}'),
-          _StatCard(title: 'Net points', value: '${stats.netPoints}'),
-          _StatCard(title: 'Заработано', value: '${stats.totalPointsEarned}'),
+                    _StatCard(title: 'Заработано', value: '${stats.totalPointsEarned}'),
           _StatCard(title: 'Потрачено', value: '${stats.totalPointsSpent}'),
           _StatCard(
             title: 'Всего участников',
@@ -417,11 +416,23 @@ class _TopUserRow extends ConsumerWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          Text(
-            '${item.netPoints}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${item.tasksApprovedCount} / ${item.tasksRejectedCount}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${(item.approvalRate * 100).toStringAsFixed(0)}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -215,7 +215,6 @@ async function getChurchMonthlyStats({ churchId, monthYYYYMM }) {
     where: {
       churchId,
       status: { in: ['APPROVED', 'REJECTED'] },
-      userId: { not: null },
       ...(start && end ? { decidedAt: { gte: start, lt: end } } : {})
     },
     _count: { _all: true }

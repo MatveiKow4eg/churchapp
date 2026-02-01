@@ -29,20 +29,26 @@ const SOFT_CAP = Object.freeze([
 
 // --- Helpers (internal) ---
 
+const { DateTime } = require('luxon');
+
+// Must match backend date filtering logic (calendar day in app TZ).
+const APP_TZ = 'Europe/Tallinn';
+
 function assertInteger(name, value) {
   if (!Number.isInteger(value)) {
     throw new Error(`${name} must be an integer`);
   }
 }
 
-function startOfLocalDay(d) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+function startOfAppDayMs(d) {
+  const dt = DateTime.fromJSDate(d, { zone: 'utc' }).setZone(APP_TZ);
+  return dt.startOf('day').toMillis();
 }
 
-function daysBetweenLocalDates(a, b) {
-  // Compare by local calendar day boundaries to avoid DST/time-of-day issues.
-  const a0 = startOfLocalDay(a).getTime();
-  const b0 = startOfLocalDay(b).getTime();
+function daysBetweenAppDates(a, b) {
+  // Compare by calendar day boundaries in APP_TZ.
+  const a0 = startOfAppDayMs(a);
+  const b0 = startOfAppDayMs(b);
   return Math.round((b0 - a0) / (24 * 60 * 60 * 1000));
 }
 
@@ -123,7 +129,7 @@ function applySoftCap(dailyXpSoFar, baseXp) {
 
 /**
  * Determines how streak should change given last completion timestamp.
- * Uses server local calendar days (not UTC) to match user perception.
+ * Uses APP_TZ calendar days (Europe/Tallinn) to match user perception.
  */
 function shouldIncrementStreak(lastTaskCompletedAt, now) {
   const nowDate = now instanceof Date ? now : new Date(now);
@@ -137,7 +143,7 @@ function shouldIncrementStreak(lastTaskCompletedAt, now) {
 
   if (Number.isNaN(lastDate.getTime())) throw new Error('Invalid lastTaskCompletedAt date');
 
-  const diffDays = daysBetweenLocalDates(lastDate, nowDate);
+  const diffDays = daysBetweenAppDates(lastDate, nowDate);
 
   if (diffDays === 0) return 'SAME_DAY';
   if (diffDays === 1) return 'NEXT_DAY';

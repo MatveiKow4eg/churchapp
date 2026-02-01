@@ -1,6 +1,7 @@
 'use strict';
 
 const { prisma } = require('../db/prisma');
+const { dayRangeUtc } = require('../utils/time');
 
 const {
   getBaseXpByDifficulty,
@@ -10,13 +11,9 @@ const {
   getStreakBonusIfAny
 } = require('../core/xp/xp_rules');
 
-function startOfLocalDay(d) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function endOfLocalDay(d) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-}
+// NOTE: "today" must be based on APP_TZ (Europe/Tallinn), not server-local time.
+// We compute the day range in APP_TZ and convert to UTC for DB filtering.
+// If you need bounds for an arbitrary date, pass a Luxon DateTime with APP_TZ.
 
 function getXpFieldByCategory(category) {
   switch (category) {
@@ -113,9 +110,8 @@ async function awardTaskXp({ userId, taskId, at = new Date(), tx } = {}) {
     // XP category is derived from task.category.
     const category = mapTaskCategoryToXpCategory(task.category);
 
-    // C) dailyXpSoFar (today)
-    const start = startOfLocalDay(atDate);
-    const end = endOfLocalDay(atDate);
+    // C) dailyXpSoFar (today in APP_TZ)
+    const { start, end } = dayRangeUtc();
 
     const agg = await trx.xpLedger.aggregate({
       where: { userId, createdAt: { gte: start, lt: end } },

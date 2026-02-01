@@ -1,4 +1,5 @@
 const { prisma } = require('../db/prisma');
+const { monthRangeUtcExclusiveEnd } = require('../utils/time');
 
 class HttpError extends Error {
   constructor(status, code, message, details) {
@@ -14,10 +15,14 @@ function parseMonthRange(monthYYYYMM) {
   if (typeof monthYYYYMM === 'string' && monthYYYYMM.toLowerCase() === 'all') {
     return { start: null, end: null };
   }
-  const [y, mm] = monthYYYYMM.split('-').map((x) => Number(x));
-  const start = new Date(Date.UTC(y, mm - 1, 1, 0, 0, 0, 0));
-  const end = new Date(Date.UTC(y, mm, 1, 0, 0, 0, 0));
-  return { start, end };
+
+  const m = /^\d{4}-\d{2}$/.test(monthYYYYMM);
+  if (!m) {
+    throw new HttpError(400, 'INVALID_MONTH', 'monthYYYYMM must be in format YYYY-MM');
+  }
+
+  // Month boundaries are defined in APP_TZ (Europe/Tallinn) and then converted to UTC for DB.
+  return monthRangeUtcExclusiveEnd(monthYYYYMM);
 }
 
 async function getUserMonthlyStats({ userId, churchId, monthYYYYMM }) {
